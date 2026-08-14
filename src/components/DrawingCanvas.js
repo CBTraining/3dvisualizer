@@ -1,6 +1,6 @@
 /**
  * Interactive 2D Drawing Studio for concepting directly on wall sections.
- * Real-time sync to the 3D wall texture.
+ * The canvas dynamically matches the exact size and aspect ratio of the selected wall section.
  */
 export class DrawingCanvas {
   constructor(container, textureManager, onDrawingChange) {
@@ -43,7 +43,7 @@ export class DrawingCanvas {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
               <span>Circle</span>
             </button>
-            <button class="tool-btn" data-tool="text" title="Text Note">
+            <button class="tool-btn" data-tool="text" title="Text Note / Dimension Callout">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
               <span>Text</span>
             </button>
@@ -60,12 +60,12 @@ export class DrawingCanvas {
             <input type="color" id="drawColorInput" value="${this.currentColor}" class="color-picker-input" title="Custom Color" />
             <div class="swatches">
               <button class="swatch-btn active" style="background: #1e293b" data-color="#1e293b" title="Charcoal"></button>
+              <button class="swatch-btn" style="background: #ffffff; border: 1px solid #cbd5e1" data-color="#ffffff" title="White"></button>
               <button class="swatch-btn" style="background: #2563eb" data-color="#2563eb" title="Royal Blue"></button>
               <button class="swatch-btn" style="background: #16a34a" data-color="#16a34a" title="Emerald"></button>
               <button class="swatch-btn" style="background: #ea580c" data-color="#ea580c" title="Amber Orange"></button>
               <button class="swatch-btn" style="background: #dc2626" data-color="#dc2626" title="Crimson"></button>
-              <button class="swatch-btn" style="background: #9333ea" data-color="#9333ea" title="Purple"></button>
-              <button class="swatch-btn" style="background: #ffffff; border: 1px solid #cbd5e1" data-color="#ffffff" title="White"></button>
+              <button class="swatch-btn" style="background: #eab308" data-color="#eab308" title="Yellow Accent"></button>
             </div>
           </div>
 
@@ -79,7 +79,7 @@ export class DrawingCanvas {
 
           <div class="tool-divider"></div>
 
-          <!-- Action Buttons (Undo, Redo, Clear) -->
+          <!-- Actions -->
           <div class="action-group">
             <button class="action-btn" id="btnUndo" title="Undo (Ctrl+Z)">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
@@ -96,10 +96,10 @@ export class DrawingCanvas {
           </div>
         </div>
 
-        <!-- Interactive Canvas Viewport -->
+        <!-- Interactive Canvas Viewport (Strict Aspect Ratio Fit) -->
         <div class="drawing-canvas-wrap" id="canvasViewport">
           <canvas id="liveDrawingCanvas"></canvas>
-          <div class="canvas-dimension-tag">15 FT SECTION CONCEPT CANVAS (LIVE 3D SYNC)</div>
+          <div class="canvas-dimension-tag" id="canvasDimTag">SELECTED WALL CONCEPT CANVAS</div>
         </div>
       </div>
     `;
@@ -137,7 +137,7 @@ export class DrawingCanvas {
       root.querySelectorAll('.swatch-btn').forEach((b) => b.classList.remove('active'));
     });
 
-    // Brush Size Slider
+    // Brush Size
     const sizeSlider = root.querySelector('#brushSizeSlider');
     const sizeVal = root.querySelector('#brushSizeVal');
     sizeSlider.addEventListener('input', (e) => {
@@ -150,7 +150,7 @@ export class DrawingCanvas {
     root.querySelector('#btnRedo').addEventListener('click', () => this.redo());
     root.querySelector('#btnClearDraw').addEventListener('click', () => this.clear());
 
-    // Interactive Canvas Mouse/Touch Events
+    // Canvas Events
     this.canvasEl = root.querySelector('#liveDrawingCanvas');
     this.canvasCtx = this.canvasEl.getContext('2d');
 
@@ -159,7 +159,6 @@ export class DrawingCanvas {
     this.canvasEl.addEventListener('pointerup', (e) => this.onPointerUp(e));
     this.canvasEl.addEventListener('pointercancel', (e) => this.onPointerUp(e));
 
-    // Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         if (e.shiftKey) {
@@ -175,21 +174,30 @@ export class DrawingCanvas {
 
   resizeCanvas() {
     if (!this.canvasEl) return;
+    const activeSection = this.textureManager.getActiveSection();
+    if (!activeSection) return;
+
     const rect = this.canvasEl.parentElement.getBoundingClientRect();
-    const aspect = 15 / 9; // 15ft width / 9ft height
-    
-    let w = rect.width - 24;
+    const aspect = activeSection.widthFt / activeSection.heightFt; // Actual wall aspect ratio
+
+    let w = rect.width - 32;
     let h = w / aspect;
-    if (h > rect.height - 24) {
-      h = rect.height - 24;
+    if (h > rect.height - 32) {
+      h = rect.height - 32;
       w = h * aspect;
     }
 
-    this.displayScale = w / 2048; // Scale factor relative to 2048px internal texture
-    this.canvasEl.style.width = `${w}px`;
-    this.canvasEl.style.height = `${h}px`;
-    this.canvasEl.width = 2048;
-    this.canvasEl.height = Math.round(2048 * (9 / 15));
+    this.canvasEl.style.width = `${Math.round(w)}px`;
+    this.canvasEl.style.height = `${Math.round(h)}px`;
+
+    // Exact internal texture resolution matching aspect ratio
+    this.canvasEl.width = activeSection.canvasWidth;
+    this.canvasEl.height = activeSection.canvasHeight;
+
+    const dimTag = this.container.querySelector('#canvasDimTag');
+    if (dimTag) {
+      dimTag.textContent = `${activeSection.name.toUpperCase()} • ${activeSection.widthFt.toFixed(1)} FT × ${activeSection.heightFt.toFixed(1)} FT (ASPECT ${aspect.toFixed(2)}:1)`;
+    }
 
     this.refreshView();
   }
@@ -209,7 +217,7 @@ export class DrawingCanvas {
     if (!activeSection) return;
 
     if (this.activeTool === 'text') {
-      const text = prompt('Enter annotation or concept note for this wall:');
+      const text = prompt(`Enter text annotation for ${activeSection.name}:`);
       if (text) {
         activeSection.addStroke({
           tool: 'text',
@@ -217,7 +225,7 @@ export class DrawingCanvas {
           x: coords.x,
           y: coords.y,
           color: this.currentColor,
-          fontSize: Math.max(24, this.brushSize * 4)
+          fontSize: Math.max(28, this.brushSize * 4)
         });
         this.refreshView();
         this.onDrawingChange();
@@ -230,7 +238,7 @@ export class DrawingCanvas {
       this.currentStroke = {
         tool: this.activeTool,
         color: this.currentColor,
-        size: this.brushSize * 3, // scale for 2048 canvas
+        size: this.brushSize * 3,
         points: [coords]
       };
     } else {
@@ -255,7 +263,6 @@ export class DrawingCanvas {
       this.currentStroke.end = coords;
     }
 
-    // Live preview
     this.renderLivePreview();
   }
 
@@ -289,7 +296,6 @@ export class DrawingCanvas {
     const activeSection = this.textureManager.getActiveSection();
     if (!activeSection) return;
 
-    // Draw the active section composite canvas to the UI canvas
     this.canvasCtx.clearRect(0, 0, this.canvasEl.width, this.canvasEl.height);
     this.canvasCtx.drawImage(activeSection.canvas, 0, 0, this.canvasEl.width, this.canvasEl.height);
   }
@@ -313,7 +319,7 @@ export class DrawingCanvas {
   }
 
   clear() {
-    if (confirm('Clear all drawings on this wall section? (Uploaded backdrop image will stay intact)')) {
+    if (confirm('Clear all sketches on this wall section?')) {
       const activeSection = this.textureManager.getActiveSection();
       if (activeSection) {
         activeSection.clearDrawing();

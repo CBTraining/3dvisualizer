@@ -77,6 +77,7 @@ class App {
     await this.loadInitialState();
 
     this.updateBadge();
+    this.drawingCanvas.resizeCanvas();
   }
 
   setupDrawer() {
@@ -100,6 +101,7 @@ class App {
   selectWallSection(sectionId) {
     this.textureManager.setActiveSection(sectionId);
     this.wallEditor.selectSection(sectionId);
+    this.drawingCanvas.resizeCanvas();
     this.drawingCanvas.refreshView();
     this.updateBadge();
   }
@@ -108,7 +110,7 @@ class App {
     const badge = document.getElementById('activeSectionBadge');
     const active = this.textureManager.getActiveSection();
     if (badge && active) {
-      badge.textContent = `Active: ${active.name}`;
+      badge.textContent = `Active: ${active.name} (${active.widthFt.toFixed(1)}ft × ${active.heightFt.toFixed(1)}ft)`;
     }
   }
 
@@ -134,11 +136,12 @@ class App {
         await this.textureManager.deserializeAll(cached.walls);
         this.roomBuilder.updateTextures();
         this.wallEditor.updateForActiveSection();
+        this.drawingCanvas.resizeCanvas();
         this.drawingCanvas.refreshView();
       } else {
-        // Clean initial state with clean walls
         this.roomBuilder.updateTextures();
         this.wallEditor.updateForActiveSection();
+        this.drawingCanvas.resizeCanvas();
         this.drawingCanvas.refreshView();
       }
     } catch (e) {

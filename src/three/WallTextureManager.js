@@ -2,17 +2,18 @@ import * as THREE from 'three';
 
 /**
  * Manages dynamic high-res canvas textures for clean architectural wall/panel surfaces.
+ * Canvas resolution matches the exact physical aspect ratio of each wall section.
  */
 export class WallTextureSection {
-  constructor(id, name, widthFt = 15, heightFt = 9, options = {}) {
+  constructor(id, name, widthFt = 19, heightFt = 9, options = {}) {
     this.id = id;
     this.name = name;
     this.widthFt = widthFt;
     this.heightFt = heightFt;
 
+    // High resolution canvas with exact aspect ratio
     this.canvasWidth = 2048;
-    this.canvasHeight = Math.round((2048 * heightFt) / widthFt);
-    if (this.canvasHeight < 512) this.canvasHeight = 512;
+    this.canvasHeight = Math.max(512, Math.round((2048 * heightFt) / widthFt));
     
     // Main composite canvas
     this.canvas = document.createElement('canvas');
@@ -34,7 +35,7 @@ export class WallTextureSection {
     this.texture.generateMipmaps = true;
 
     // State properties
-    this.baseColor = options.baseColor || '#717882'; // Default clean architectural grey
+    this.baseColor = options.baseColor || '#717882';
     this.image = null;
     this.imageDataUrl = null;
     this.imageTransform = {
@@ -85,7 +86,7 @@ export class WallTextureSection {
     ctx.fillStyle = this.baseColor;
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle wall gradient for natural light bounce
+    // Subtle natural wall shading gradient
     const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
     grad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
@@ -93,7 +94,7 @@ export class WallTextureSection {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    // 2. Custom Image Layer (if user uploaded an image)
+    // 2. Custom Image Layer
     if (this.image && (this.image.complete || this.image.width > 0)) {
       ctx.save();
       ctx.globalAlpha = this.imageTransform.opacity;
@@ -163,7 +164,7 @@ export class WallTextureSection {
       ctx.restore();
     }
 
-    // 3. Drawing Layer
+    // 3. Concept Drawing Layer
     ctx.drawImage(this.drawingCanvas, 0, 0);
 
     this.texture.needsUpdate = true;
@@ -326,29 +327,28 @@ export class WallTextureSection {
 }
 
 /**
- * Manager handling all architectural wall sections
- * Default theme: All interior walls grey, centerpiece black, outer walls black.
+ * Manager handling all architectural wall sections with exact dimensions
  */
 export class WallTextureManager {
   constructor(onUpdateCallback) {
     this.onUpdate = onUpdateCallback || (() => {});
     
-    const INTERIOR_GREY = '#717882';
-    const CENTER_BLACK = '#18191d';
+    const GREY = '#717882';
+    const BLACK = '#18191d';
 
+    // Exact wall physical dimensions for 1:1 aspect ratio mapping:
     this.sections = {
-      1: new WallTextureSection(1, 'North Wall', 15, 9, { baseColor: INTERIOR_GREY }),
-      2: new WallTextureSection(2, 'Upper West Wall', 12, 9, { baseColor: INTERIOR_GREY }),
-      3: new WallTextureSection(3, 'Lower West Wall', 12, 9, { baseColor: INTERIOR_GREY }),
-      4: new WallTextureSection(4, 'South Wall (Left)', 10, 9, { baseColor: INTERIOR_GREY }),
-      5: new WallTextureSection(5, 'South Wall (Right)', 12, 9, { baseColor: INTERIOR_GREY }),
-      6: new WallTextureSection(6, 'East Wall (Mid Section)', 10, 9, { baseColor: INTERIOR_GREY }),
-      7: new WallTextureSection(7, 'East Wall (Lower / Booth)', 10, 9, { baseColor: INTERIOR_GREY }),
-      8: new WallTextureSection(8, 'Centerpiece Island Column', 18, 9, { baseColor: CENTER_BLACK }),
-      9: new WallTextureSection(9, 'North Partition Fin', 8, 9, { baseColor: INTERIOR_GREY }),
-      10: new WallTextureSection(10, 'West Partition Fin', 8, 9, { baseColor: INTERIOR_GREY }),
-      11: new WallTextureSection(11, 'East Partition Fin', 8, 9, { baseColor: INTERIOR_GREY }),
-      12: new WallTextureSection(12, 'South Entrance Vestibule', 8, 9, { baseColor: INTERIOR_GREY })
+      1: new WallTextureSection(1, 'North Wall', 19.0, 9.0, { baseColor: GREY }),
+      2: new WallTextureSection(2, 'Upper West Wall', 9.5, 9.0, { baseColor: GREY }),
+      3: new WallTextureSection(3, 'Lower West Wall', 9.5, 9.0, { baseColor: GREY }),
+      4: new WallTextureSection(4, 'South Wall', 22.5, 9.0, { baseColor: GREY }),
+      5: new WallTextureSection(5, 'East Wall (Mid Section)', 6.0, 9.0, { baseColor: GREY }),
+      6: new WallTextureSection(6, 'East Wall (Lower / Booth)', 7.0, 9.0, { baseColor: GREY }),
+      7: new WallTextureSection(7, 'Centerpiece Island Column', 18.4, 9.0, { baseColor: BLACK }),
+      8: new WallTextureSection(8, 'North Partition Fin', 7.0, 9.0, { baseColor: GREY }),
+      9: new WallTextureSection(9, 'West Partition Fin', 7.0, 9.0, { baseColor: GREY }),
+      10: new WallTextureSection(10, 'East Partition Fin', 7.0, 9.0, { baseColor: GREY }),
+      11: new WallTextureSection(11, 'South Entrance Vestibule', 6.0, 9.0, { baseColor: GREY })
     };
 
     this.activeSectionId = 1;

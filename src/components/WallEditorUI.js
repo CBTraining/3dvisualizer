@@ -1,5 +1,5 @@
 /**
- * Wall Editor UI with categorized section selector matching the custom floorplan
+ * Wall Editor UI with categorized section selector matching the consolidated room sections
  */
 export class WallEditorUI {
   constructor(container, textureManager, roomBuilder, sceneManager, onStateChange) {
@@ -19,60 +19,59 @@ export class WallEditorUI {
         <div class="section-tabs-header">
           <div class="section-tabs-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-            <span>FLOORPLAN ARCHITECTURAL SECTIONS</span>
+            <span>ARCHITECTURAL SECTIONS & WALLS</span>
           </div>
 
-          <!-- Section Dropdown / Quick Selector -->
           <div class="wall-category-group">
             <label class="cat-label">Perimeter Walls</label>
             <div class="wall-tabs-grid">
-              <button class="wall-tab-btn active" data-section="1" title="North Wall (Right Screen)">
+              <button class="wall-tab-btn active" data-section="1" title="North Wall (19ft × 9ft)">
                 <span class="tab-num">N</span>
                 <span class="tab-label">North</span>
               </button>
-              <button class="wall-tab-btn" data-section="2" title="Upper West Wall (Screen)">
+              <button class="wall-tab-btn" data-section="2" title="Upper West Wall (9.5ft × 9ft)">
                 <span class="tab-num">W1</span>
                 <span class="tab-label">Upper W</span>
               </button>
-              <button class="wall-tab-btn" data-section="3" title="Lower West Wall (Screen)">
+              <button class="wall-tab-btn" data-section="3" title="Lower West Wall (9.5ft × 9ft)">
                 <span class="tab-num">W2</span>
                 <span class="tab-label">Lower W</span>
               </button>
-              <button class="wall-tab-btn" data-section="4" title="South Wall (Left Grey)">
-                <span class="tab-num">S1</span>
-                <span class="tab-label">South (L)</span>
+              <button class="wall-tab-btn" data-section="4" title="South Wall (22.5ft × 9ft)">
+                <span class="tab-num">S</span>
+                <span class="tab-label">South</span>
               </button>
-              <button class="wall-tab-btn" data-section="5" title="South Wall (Right Screen)">
-                <span class="tab-num">S2</span>
-                <span class="tab-label">South (R)</span>
-              </button>
-              <button class="wall-tab-btn" data-section="6" title="East Wall (Mid Section)">
+              <button class="wall-tab-btn" data-section="5" title="East Wall Mid (6ft × 9ft)">
                 <span class="tab-num">E1</span>
                 <span class="tab-label">Mid East</span>
               </button>
-              <button class="wall-tab-btn" data-section="7" title="East Wall (Lower / Booth)">
+              <button class="wall-tab-btn" data-section="6" title="East Wall Lower / Booth (7ft × 9ft)">
                 <span class="tab-num">E2</span>
                 <span class="tab-label">SE Booth</span>
               </button>
             </div>
 
-            <label class="cat-label" style="margin-top: 8px;">Island & Partitions</label>
+            <label class="cat-label" style="margin-top: 8px;">Island, Fins & Vestibule</label>
             <div class="wall-tabs-grid-sub">
-              <button class="wall-tab-btn" data-section="8" title="Center Island Column">
+              <button class="wall-tab-btn" data-section="7" title="Centerpiece Island Column">
                 <span class="tab-num">CTR</span>
-                <span class="tab-label">Center Island</span>
+                <span class="tab-label">Centerpiece</span>
               </button>
-              <button class="wall-tab-btn" data-section="9" title="North Partition Fin">
+              <button class="wall-tab-btn" data-section="8" title="North Partition Fin">
                 <span class="tab-num">F-N</span>
                 <span class="tab-label">North Fin</span>
               </button>
-              <button class="wall-tab-btn" data-section="10" title="West Partition Fin">
+              <button class="wall-tab-btn" data-section="9" title="West Partition Fin">
                 <span class="tab-num">F-W</span>
                 <span class="tab-label">West Fin</span>
               </button>
-              <button class="wall-tab-btn" data-section="11" title="East Partition Fin">
+              <button class="wall-tab-btn" data-section="10" title="East Partition Fin">
                 <span class="tab-num">F-E</span>
                 <span class="tab-label">East Fin</span>
+              </button>
+              <button class="wall-tab-btn" data-section="11" title="South Entrance Vestibule">
+                <span class="tab-num">VEST</span>
+                <span class="tab-label">Vestibule</span>
               </button>
             </div>
           </div>
@@ -82,8 +81,8 @@ export class WallEditorUI {
           <!-- Active Wall Meta & Camera Snap -->
           <div class="wall-meta-bar">
             <div class="active-wall-info">
-              <h3 id="activeWallTitle">North Wall (Right Screen)</h3>
-              <p class="wall-subtext" id="activeWallSubtext">Surface Area: 135 sq ft • Interactive Display</p>
+              <h3 id="activeWallTitle">North Wall</h3>
+              <p class="wall-subtext" id="activeWallSubtext">Dimensions: 19.0 ft × 9.0 ft</p>
             </div>
             <button class="btn-snap-view" id="btnSnapWall" title="Align camera directly in front of this section">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/></svg>
@@ -122,7 +121,7 @@ export class WallEditorUI {
               </div>
             </div>
 
-            <!-- Image Settings (Shown when image loaded) -->
+            <!-- Image Settings -->
             <div class="image-controls-group" id="imageControlsGroup" style="display: none;">
               <div class="control-row-header">
                 <span class="section-badge">Image Transform</span>
@@ -208,25 +207,25 @@ export class WallEditorUI {
             <div class="control-field">
               <label>Section Base Color</label>
               <div class="paint-swatches-grid">
-                <button class="paint-swatch active" data-color="#5c6448" style="background: #5c6448" title="Olive Khaki"></button>
-                <button class="paint-swatch" data-color="#7a818c" style="background: #7a818c" title="Studio Grey"></button>
-                <button class="paint-swatch" data-color="#475569" style="background: #475569" title="Slate Charcoal"></button>
+                <button class="paint-swatch active" data-color="#717882" style="background: #717882" title="Architectural Grey"></button>
+                <button class="paint-swatch" data-color="#18191d" style="background: #18191d" title="Matte Black"></button>
                 <button class="paint-swatch" data-color="#ffffff" style="background: #ffffff" title="Pure White"></button>
                 <button class="paint-swatch" data-color="#ebe7df" style="background: #ebe7df" title="Warm Greige"></button>
                 <button class="paint-swatch" data-color="#2a3b4c" style="background: #2a3b4c" title="Navy Blue"></button>
                 <button class="paint-swatch" data-color="#24342a" style="background: #24342a" title="Forest Green"></button>
                 <button class="paint-swatch" data-color="#d97706" style="background: #d97706" title="Warm Amber"></button>
+                <button class="paint-swatch" data-color="#5c6448" style="background: #5c6448" title="Olive Khaki"></button>
               </div>
               <div class="custom-color-row">
                 <span>Custom Paint Tone:</span>
-                <input type="color" id="wallColorPicker" value="#5c6448" class="color-picker-input" />
+                <input type="color" id="wallColorPicker" value="#717882" class="color-picker-input" />
               </div>
             </div>
           </div>
 
           <!-- Panel 3: Sample Art Gallery -->
           <div class="panel-section" id="panelSamples" style="display: none;">
-            <p class="sample-intro">Click any sample graphic to place on the active wall section:</p>
+            <p class="sample-intro">Click any graphic to load onto the active wall:</p>
             <div class="sample-art-grid">
               <button class="sample-card" data-sample="geometric">
                 <div class="sample-thumb geo-thumb"></div>
@@ -265,7 +264,7 @@ export class WallEditorUI {
       });
     });
 
-    // Subtabs (Image / Paint / Samples)
+    // Subtabs
     root.querySelectorAll('.subtab-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         root.querySelectorAll('.subtab-btn').forEach((b) => b.classList.remove('active'));
@@ -464,6 +463,7 @@ export class WallEditorUI {
     if (!active) return;
 
     root.querySelector('#activeWallTitle').textContent = active.name;
+    root.querySelector('#activeWallSubtext').textContent = `Dimensions: ${active.widthFt.toFixed(1)} ft × ${active.heightFt.toFixed(1)} ft (${Math.round(active.widthFt * active.heightFt)} sq ft)`;
 
     const hasImage = !!active.image;
     root.querySelector('#imageControlsGroup').style.display = hasImage ? 'block' : 'none';
@@ -512,68 +512,49 @@ export class WallEditorUI {
   }
 
   loadSampleGraphic(type) {
+    const active = this.textureManager.getActiveSection();
     const canvas = document.createElement('canvas');
-    canvas.width = 1600;
-    canvas.height = 960;
+    canvas.width = active ? active.canvasWidth : 1600;
+    canvas.height = active ? active.canvasHeight : 960;
     const ctx = canvas.getContext('2d');
 
     if (type === 'geometric') {
       ctx.fillStyle = '#fbf7ee';
-      ctx.fillRect(0, 0, 1600, 960);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#e76f51';
-      ctx.beginPath(); ctx.arc(800, 480, 260, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height / 2, canvas.height * 0.3, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#264653';
-      ctx.fillRect(200, 150, 400, 660);
-      ctx.fillStyle = '#e9c46a';
-      ctx.beginPath(); ctx.moveTo(700, 700); ctx.lineTo(1300, 700); ctx.lineTo(1000, 200); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = '#2a9d8f';
-      ctx.lineWidth = 16;
-      ctx.strokeRect(300, 250, 1000, 460);
+      ctx.fillRect(canvas.width * 0.15, canvas.height * 0.15, canvas.width * 0.25, canvas.height * 0.7);
     } else if (type === 'architectural') {
       ctx.fillStyle = '#0f2744';
-      ctx.fillRect(0, 0, 1600, 960);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
       ctx.lineWidth = 1;
-      for (let x = 0; x <= 1600; x += 40) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 960); ctx.stroke();
+      for (let x = 0; x <= canvas.width; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
       }
-      for (let y = 0; y <= 960; y += 40) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1600, y); ctx.stroke();
+      for (let y = 0; y <= canvas.height; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
       }
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(200, 160, 1200, 640);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 36px monospace';
-      ctx.fillText('EXHIBIT ELEVATION MODULE', 240, 230);
     } else if (type === 'nature') {
-      const grad = ctx.createLinearGradient(0, 0, 0, 960);
+      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
       grad.addColorStop(0, '#fbcfe8');
       grad.addColorStop(0.5, '#fed7aa');
       grad.addColorStop(1, '#bae6fd');
       ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, 1600, 960);
-      ctx.fillStyle = '#fb7185';
-      ctx.beginPath(); ctx.arc(800, 360, 140, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#334155';
-      ctx.beginPath(); ctx.moveTo(0, 960); ctx.lineTo(400, 500); ctx.lineTo(800, 700); ctx.lineTo(1200, 450); ctx.lineTo(1600, 800); ctx.lineTo(1600, 960); ctx.closePath(); ctx.fill();
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
     } else {
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, 1600, 960);
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath(); ctx.arc(800, 420, 200, 0, Math.PI); ctx.fill();
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#0f172a';
       ctx.font = '300 48px "Inter", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('N E O   G A L L E R Y', 800, 750);
-      ctx.font = '400 20px "Inter", sans-serif';
-      ctx.fillText('CUSTOM EXHIBITION ARCHITECTURE', 800, 800);
+      ctx.fillText('EXHIBIT SPACE', canvas.width / 2, canvas.height / 2);
     }
 
     const dataUrl = canvas.toDataURL('image/png');
     const img = new Image();
     img.onload = () => {
-      const active = this.textureManager.getActiveSection();
       if (active) {
         active.setImage(img, dataUrl);
         this.updateForActiveSection();
