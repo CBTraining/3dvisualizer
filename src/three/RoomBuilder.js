@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 
 /**
- * Architectural Room Builder with complete, watertight 3D solid geometry:
- * - Proper wall thickness (0.5 ft) and solid vertical end-caps/jambs at all doorway openings
- * - Outer faces, fillets outer shell, top caps, and end caps are solid black
- * - Inner faces, partition fins, and vestibule are grey
- * - Centerpiece island column is solid black with white top rim
- * - Opacity & transparency controls
+ * Architectural Room Builder with exact inner partition fins and passage gaps
+ * matching the user's annotated diagram:
+ * - North partition split: Outer North fin + passage gap + Center-North stub fin
+ * - West partition split: Outer West fin + passage gap + Center-West stub fin
+ * - East partition: Continuous horizontal fin from East wall extending to center
+ * - South Entrance Vestibule with angled door
+ * - Solid watertight 3D walls, black exterior, grey interior, black centerpiece
  */
 export class RoomBuilder {
   constructor(scene, wallTextureManager) {
@@ -137,7 +138,7 @@ export class RoomBuilder {
     this.roomGroup.add(plinth);
 
     // -------------------------------------------------------------
-    // 2. NORTH WALL (Solid 16ft span)
+    // 2. NORTH WALL
     // -------------------------------------------------------------
     const northStraightLength = L * 2;
     const northGeo = new THREE.BoxGeometry(northStraightLength, H, T);
@@ -153,7 +154,7 @@ export class RoomBuilder {
     const northMesh = new THREE.Mesh(northGeo, [
       this.outerBlackMaterial,
       this.outerBlackMaterial,
-      this.outerBlackMaterial, // Top cap
+      this.outerBlackMaterial,
       this.outerBlackMaterial,
       northInteriorMat, // +z Interior
       this.outerBlackMaterial  // -z Exterior
@@ -164,18 +165,15 @@ export class RoomBuilder {
     this.roomGroup.add(northMesh);
     this.wallMeshes[1] = northMesh;
 
-    // Northwest Corner (Watertight solid curved corner)
+    // Northwest & Northeast Curved Corners
     this.buildWatertightCurvedCorner(-L, -L, R, Math.PI, Math.PI * 1.5, H, T);
-
-    // Northeast Corner (Watertight solid curved corner ending with solid doorway end-cap at z = -8.5)
     this.buildWatertightCurvedCorner(L, -L, R, Math.PI * 1.5, Math.PI * 1.88, H, T);
 
     // -------------------------------------------------------------
-    // 3. WEST WALL (Upper & Lower Segments)
+    // 3. WEST WALL
     // -------------------------------------------------------------
     const westGeo = new THREE.BoxGeometry(T, H, L);
 
-    // Upper West Wall
     const upperWestMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(2).texture,
       roughness: 0.85,
@@ -188,7 +186,7 @@ export class RoomBuilder {
     const upperWestMesh = new THREE.Mesh(westGeo, [
       upperWestMat, // +x Interior
       this.outerBlackMaterial, // -x Exterior
-      this.outerBlackMaterial, // +y Top cap
+      this.outerBlackMaterial,
       this.outerBlackMaterial,
       this.outerBlackMaterial,
       this.outerBlackMaterial
@@ -199,7 +197,6 @@ export class RoomBuilder {
     this.roomGroup.add(upperWestMesh);
     this.wallMeshes[2] = upperWestMesh;
 
-    // Lower West Wall
     const lowerWestMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(3).texture,
       roughness: 0.85,
@@ -212,7 +209,7 @@ export class RoomBuilder {
     const lowerWestMesh = new THREE.Mesh(westGeo, [
       lowerWestMat, // +x Interior
       this.outerBlackMaterial, // -x Exterior
-      this.outerBlackMaterial, // +y Top cap
+      this.outerBlackMaterial,
       this.outerBlackMaterial,
       this.outerBlackMaterial,
       this.outerBlackMaterial
@@ -223,7 +220,7 @@ export class RoomBuilder {
     this.roomGroup.add(lowerWestMesh);
     this.wallMeshes[3] = lowerWestMesh;
 
-    // Southwest Corner (Watertight solid curved corner)
+    // Southwest Corner
     this.buildWatertightCurvedCorner(-L, L, R, Math.PI * 0.5, Math.PI, H, T);
 
     // -------------------------------------------------------------
@@ -244,7 +241,7 @@ export class RoomBuilder {
     const southMesh = new THREE.Mesh(southGeo, [
       this.outerBlackMaterial,
       this.outerBlackMaterial,
-      this.outerBlackMaterial, // +y Top cap
+      this.outerBlackMaterial,
       this.outerBlackMaterial,
       this.outerBlackMaterial, // +z Exterior
       southInteriorMat // -z Interior
@@ -259,9 +256,8 @@ export class RoomBuilder {
     this.buildEntranceVestibule(H, T);
 
     // -------------------------------------------------------------
-    // 5. EAST WALL (Mid & Lower Segments with Solid End Caps)
+    // 5. EAST WALL
     // -------------------------------------------------------------
-    // Mid-East Wall (z: -3.5 to +2.5)
     const midEastMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(5).texture,
       roughness: 0.85,
@@ -274,10 +270,10 @@ export class RoomBuilder {
     const midEastMesh = new THREE.Mesh(new THREE.BoxGeometry(T, H, 6.0), [
       this.outerBlackMaterial, // +x Exterior
       midEastMat, // -x Interior
-      this.outerBlackMaterial, // +y Top cap
       this.outerBlackMaterial,
-      this.outerBlackMaterial, // +z North end-cap jamb
-      this.outerBlackMaterial  // -z South end-cap jamb
+      this.outerBlackMaterial,
+      this.outerBlackMaterial,
+      this.outerBlackMaterial
     ]);
     midEastMesh.position.set(13.5, H / 2, -0.5);
     midEastMesh.receiveShadow = true;
@@ -285,7 +281,6 @@ export class RoomBuilder {
     this.roomGroup.add(midEastMesh);
     this.wallMeshes[5] = midEastMesh;
 
-    // Lower-East Wall (z: +6.0 to +13.5)
     const lowerEastMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(6).texture,
       roughness: 0.85,
@@ -298,10 +293,10 @@ export class RoomBuilder {
     const lowerEastMesh = new THREE.Mesh(new THREE.BoxGeometry(T, H, 7.5), [
       this.outerBlackMaterial, // +x Exterior
       lowerEastMat, // -x Interior
-      this.outerBlackMaterial, // +y Top cap
       this.outerBlackMaterial,
-      this.outerBlackMaterial, // +z North end-cap jamb
-      this.outerBlackMaterial  // -z South end-cap jamb
+      this.outerBlackMaterial,
+      this.outerBlackMaterial,
+      this.outerBlackMaterial
     ]);
     lowerEastMesh.position.set(13.5, H / 2, 9.75);
     lowerEastMesh.receiveShadow = true;
@@ -318,7 +313,7 @@ export class RoomBuilder {
     this.buildCenterpiece(H);
 
     // -------------------------------------------------------------
-    // 7. RADIAL PARTITION FINS
+    // 7. INNER PARTITION FINS WITH PASSAGE GAPS (Exact Match)
     // -------------------------------------------------------------
     this.buildPartitionFins(H, T);
 
@@ -330,15 +325,6 @@ export class RoomBuilder {
     }
   }
 
-  /**
-   * Builds a completely watertight, solid 3D curved wall corner with:
-   * - Outer curved wall (Solid Black)
-   * - Inner curved wall (Grey)
-   * - Top cap (Solid Black)
-   * - Bottom cap (Solid Black)
-   * - Solid Start-Cap Jamb (Solid Black)
-   * - Solid End-Cap Jamb (Solid Black) -> Eliminates open knife-edges at doorway openings!
-   */
   buildWatertightCurvedCorner(cx, cz, radius, startAngle, endAngle, H, T) {
     const segments = 32;
     const rIn = radius - T / 2;
@@ -441,7 +427,7 @@ export class RoomBuilder {
     const topMesh = new THREE.Mesh(topGeo, this.doubleBlackMaterial);
     cornerGroup.add(topMesh);
 
-    // 4. Start-Cap Jamb Quad (Solid Wall Thickness at startAngle)
+    // 4. Start Jamb
     const sOutX = cx + Math.cos(startAngle) * rOut;
     const sOutZ = cz + Math.sin(startAngle) * rOut;
     const sInX = cx + Math.cos(startAngle) * rIn;
@@ -459,7 +445,7 @@ export class RoomBuilder {
     const startJambMesh = new THREE.Mesh(startJambGeo, this.doubleBlackMaterial);
     cornerGroup.add(startJambMesh);
 
-    // 5. End-Cap Jamb Quad (Solid Wall Thickness at endAngle -> Closes the doorway end cleanly!)
+    // 5. End Jamb (Doorway Closure)
     const eOutX = cx + Math.cos(endAngle) * rOut;
     const eOutZ = cz + Math.sin(endAngle) * rOut;
     const eInX = cx + Math.cos(endAngle) * rIn;
@@ -602,31 +588,65 @@ export class RoomBuilder {
     this.roomGroup.add(islandGroup);
   }
 
+  /**
+   * Builds the exact inner partition fins with passage gaps matching the user's diagram:
+   * 1. North Spoke: Outer fin attached to North wall + passage gap + Center-North stub fin
+   * 2. West Spoke: Outer fin attached to West wall + passage gap + Center-West stub fin
+   * 3. East Spoke: Continuous long fin spanning from East wall leftward toward center
+   */
   buildPartitionFins(H, T) {
     const finsGroup = new THREE.Group();
     finsGroup.name = 'PartitionFins';
 
-    const northFinGeo = new THREE.BoxGeometry(T, H, 7.3);
-    const northFin = new THREE.Mesh(northFinGeo, this.interiorGreyMaterial);
-    northFin.position.set(0, H / 2, -9.85);
-    northFin.castShadow = true;
-    northFin.receiveShadow = true;
-    northFin.userData = { sectionId: 8, name: 'North Partition Fin' };
-    finsGroup.add(northFin);
-    this.wallMeshes[8] = northFin;
+    // -------------------------------------------------------------
+    // NORTH SPOKE (Split into 2 segments with passage gap)
+    // -------------------------------------------------------------
+    // Segment 1: Attached to North wall (z from -13.5 to -9.0, length 4.5ft)
+    const northOuterGeo = new THREE.BoxGeometry(T, H, 4.5);
+    const northOuterFin = new THREE.Mesh(northOuterGeo, this.interiorGreyMaterial);
+    northOuterFin.position.set(0, H / 2, -11.25);
+    northOuterFin.castShadow = true;
+    northOuterFin.receiveShadow = true;
+    northOuterFin.userData = { sectionId: 8, name: 'North Partition Fin (Outer)' };
+    finsGroup.add(northOuterFin);
+    this.wallMeshes[8] = northOuterFin;
 
-    const westFinGeo = new THREE.BoxGeometry(7.3, H, T);
-    const westFin = new THREE.Mesh(westFinGeo, this.interiorGreyMaterial);
-    westFin.position.set(-9.85, H / 2, 0);
-    westFin.castShadow = true;
-    westFin.receiveShadow = true;
-    westFin.userData = { sectionId: 9, name: 'West Partition Fin' };
-    finsGroup.add(westFin);
-    this.wallMeshes[9] = westFin;
+    // Segment 2: Attached to Centerpiece (z from -5.0 to -2.4, length 2.6ft)
+    const northCenterGeo = new THREE.BoxGeometry(T, H, 2.6);
+    const northCenterFin = new THREE.Mesh(northCenterGeo, this.interiorGreyMaterial);
+    northCenterFin.position.set(0, H / 2, -3.7);
+    northCenterFin.castShadow = true;
+    northCenterFin.receiveShadow = true;
+    finsGroup.add(northCenterFin);
 
-    const eastFinGeo = new THREE.BoxGeometry(7.3, H, T);
+    // -------------------------------------------------------------
+    // WEST SPOKE (Split into 2 segments with passage gap)
+    // -------------------------------------------------------------
+    // Segment 1: Attached to West wall (x from -13.5 to -9.0, length 4.5ft)
+    const westOuterGeo = new THREE.BoxGeometry(4.5, H, T);
+    const westOuterFin = new THREE.Mesh(westOuterGeo, this.interiorGreyMaterial);
+    westOuterFin.position.set(-11.25, H / 2, 0);
+    westOuterFin.castShadow = true;
+    westOuterFin.receiveShadow = true;
+    westOuterFin.userData = { sectionId: 9, name: 'West Partition Fin (Outer)' };
+    finsGroup.add(westOuterFin);
+    this.wallMeshes[9] = westOuterFin;
+
+    // Segment 2: Attached to Centerpiece (x from -5.0 to -2.4, length 2.6ft)
+    const westCenterGeo = new THREE.BoxGeometry(2.6, H, T);
+    const westCenterFin = new THREE.Mesh(westCenterGeo, this.interiorGreyMaterial);
+    westCenterFin.position.set(-3.7, H / 2, 0);
+    westCenterFin.castShadow = true;
+    westCenterFin.receiveShadow = true;
+    finsGroup.add(westCenterFin);
+
+    // -------------------------------------------------------------
+    // EAST SPOKE (Continuous long fin spanning to center)
+    // -------------------------------------------------------------
+    // Spanning from x = +13.5 extending left to x = +4.5 (length 9.0ft) at z = -0.5
+    const eastFinGeo = new THREE.BoxGeometry(9.0, H, T);
     const eastFin = new THREE.Mesh(eastFinGeo, this.interiorGreyMaterial);
-    eastFin.position.set(9.85, H / 2, -0.5);
+    eastFin.position.set(9.0, H / 2, -0.5);
     eastFin.castShadow = true;
     eastFin.receiveShadow = true;
     eastFin.userData = { sectionId: 10, name: 'East Partition Fin' };
