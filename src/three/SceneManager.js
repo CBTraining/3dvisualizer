@@ -2,9 +2,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomBuilder } from './RoomBuilder.js';
 import { Lighting } from './Lighting.js';
+import { FirstPersonController } from './FirstPersonController.js';
 
 /**
- * Scene Manager orchestrating camera, orbital controls, raycasting, and camera presets
+ * Scene Manager orchestrating Orbit controls, First-Person WASD Walk controls, raycasting, and camera presets
  */
 export class SceneManager {
   constructor(container, textureManager, onWallSelect) {
@@ -12,12 +13,14 @@ export class SceneManager {
     this.textureManager = textureManager;
     this.onWallSelect = onWallSelect || (() => {});
 
+    this.currentMode = 'orbit'; // 'orbit' | 'walk'
+
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xf1f5f9);
 
     // Setup Perspective Camera
     this.camera = new THREE.PerspectiveCamera(
-      45,
+      48,
       this.container.clientWidth / this.container.clientHeight,
       0.1,
       250
@@ -41,13 +44,19 @@ export class SceneManager {
     this.container.appendChild(this.renderer.domElement);
 
     // Orbit Controls
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.08;
-    this.controls.maxPolarAngle = Math.PI / 2 + 0.02;
-    this.controls.minDistance = 3;
-    this.controls.maxDistance = 85;
-    this.controls.target.copy(this.defaultTarget);
+    this.orbitControls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.orbitControls.enableDamping = true;
+    this.orbitControls.dampingFactor = 0.08;
+    this.orbitControls.maxPolarAngle = Math.PI / 2 + 0.02;
+    this.orbitControls.minDistance = 3;
+    this.orbitControls.maxDistance = 85;
+    this.orbitControls.target.copy(this.defaultTarget);
+
+    // First Person Walk Controller
+    this.fpController = new FirstPersonController(this.camera, this.renderer.domElement, this.scene);
+    this.fpController.onLockChange = (isLocked) => {
+      this.updateHudState(isLocked);
+    };
 
     // Lighting & Custom Room
     this.lighting = new Lighting(this.scene);
@@ -66,9 +75,42 @@ export class SceneManager {
     this.animStartTarget = new THREE.Vector3();
     this.animEndTarget = new THREE.Vector3();
 
+    this.createWalkHud();
     this.bindEvents();
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
+  }
+
+  createWalkHud() {
+    this.hudEl = document.createElement('div');
+    this.hudEl.className = 'walk-hud';
+    this.hudEl.style.display = 'none';
+    this.hudEl.innerHTML = `
+      <div class="walk-crosshair"></div>
+      <div class="walk-hud-badge" id="walkHudBadge">
+        <div class="hud-row">
+          <span class="hud-pill">W A S D</span>
+          <span>or <strong>Arrows</strong> to Walk</span>
+          <span class="hud-pill">Mouse</span>
+          <span>to Look</span>
+          <span class="hud-pill">Shift</span>
+          <span>Sprint</span>
+        </div>
+        <div class="hud-sub" id="walkHudSub">Click viewport to lock mouse for smooth 360° look • Esc to release cursor</div>
+      </div>
+    `;
+    this.container.appendChild(this.hudEl);
+  }
+
+  updateHudState(isLocked) {
+    const sub = this.hudEl.querySelector('#walkHudSub');
+    if (sub) {
+      if (isLocked) {
+        sub.innerHTML = `Mouse locked • Move mouse to look around • <strong>Esc</strong> to unlock cursor`;
+      } else {
+        sub.innerHTML = `Click viewport to lock mouse for smooth 360° look • <strong>Esc</strong> to release cursor`;
+      }
+    }
   }
 
   bindEvents() {
@@ -77,12 +119,18 @@ export class SceneManager {
     this.renderer.domElement.addEventListener('pointerdown', (e) => {
       this.pointerDownTime = Date.now();
       this.pointerDownPos = { x: e.clientX, y: e.clientY };
+
+      if (this.currentMode === 'walk') {
+        this.fpController.requestLock();
+      }
     });
 
     this.renderer.domElement.addEventListener('pointerup', (e) => {
-      const dist = Math.hypot(e.clientX - this.pointerDownPos.x, e.clientY - this.pointerDownPos.y);
-      if (Date.now() - this.pointerDownTime < 300 && dist < 5) {
-        this.handleCanvasClick(e);
+      if (this.currentMode === 'orbit') {
+        const dist = Math.hypot(e.clientX - this.pointerDownPos.x, e.clientY - this.pointerDownPos.y);
+        if (Date.now() - this.pointerDownTime < 300 && dist < 5) {
+          this.handleCanvasClick(e);
+        }
       }
     });
   }
@@ -124,12 +172,27 @@ export class SceneManager {
     this.animStartPos.copy(this.camera.position);
     this.animEndPos.copy(targetPos);
 
-    this.animStartTarget.copy(this.controls.target);
+    this.animStartTarget.copy(this.orbitControls.target);
     this.animEndTarget.copy(targetLookAt);
   }
 
   setView(preset) {
     const H = this.roomBuilder.params.wallHeight;
+
+    if (preset === 'walk' || preset === 'interior') {
+      this.currentMode = 'walk';
+      this.orbitControls.enabled = false;
+      this.hudEl.style.display = 'block';
+      // Spawn just inside south entrance vestibule facing north into room center
+      this.fpController.enterWalkMode(new THREE.Vector3(0, 5.2, 10.5), new THREE.Vector3(0, 5.2, 0));
+      return;
+    }
+
+    // Switch back to orbit mode
+    this.currentMode = 'orbit';
+    this.fpController.exitWalkMode();
+    this.orbitControls.enabled = true;
+    this.hudEl.style.display = 'none';
 
     switch (preset) {
       case 'overview':
@@ -137,13 +200,7 @@ export class SceneManager {
         break;
 
       case 'topdown':
-        // Direct top-down 2D floorplan view matching reference image
         this.animateCameraTo(new THREE.Vector3(0, 48, 0.01), new THREE.Vector3(0, 0, 0));
-        break;
-
-      case 'interior':
-        // Step inside south entrance
-        this.animateCameraTo(new THREE.Vector3(0, 5.2, 8), new THREE.Vector3(0, 5.2, -6));
         break;
 
       case 'wall-1': // North Wall
@@ -186,20 +243,24 @@ export class SceneManager {
   animate(time) {
     requestAnimationFrame(this.animate);
 
-    if (this.isAnimatingCamera) {
-      const elapsed = time - this.animStartTime;
-      const progress = Math.min(elapsed / this.animDuration, 1.0);
-      const ease = 1 - Math.pow(1 - progress, 3);
+    if (this.currentMode === 'walk') {
+      this.fpController.update(time);
+    } else {
+      if (this.isAnimatingCamera) {
+        const elapsed = time - this.animStartTime;
+        const progress = Math.min(elapsed / this.animDuration, 1.0);
+        const ease = 1 - Math.pow(1 - progress, 3);
 
-      this.camera.position.lerpVectors(this.animStartPos, this.animEndPos, ease);
-      this.controls.target.lerpVectors(this.animStartTarget, this.animEndTarget, ease);
+        this.camera.position.lerpVectors(this.animStartPos, this.animEndPos, ease);
+        this.orbitControls.target.lerpVectors(this.animStartTarget, this.animEndTarget, ease);
 
-      if (progress >= 1.0) {
-        this.isAnimatingCamera = false;
+        if (progress >= 1.0) {
+          this.isAnimatingCamera = false;
+        }
       }
+      this.orbitControls.update();
     }
 
-    this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
 }

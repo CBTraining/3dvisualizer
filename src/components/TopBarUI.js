@@ -36,11 +36,11 @@ export class TopBarUI {
         <div class="view-mode-pills">
           <button class="pill-btn active" data-view="overview" title="3D Orbit Overview">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-            <span>3D Overview</span>
+            <span>3D Orbit</span>
           </button>
-          <button class="pill-btn" data-view="interior" title="Inside Room View">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20"/><path d="M20 12v8H4v-8"/><path d="m4 4 8-2 8 2"/></svg>
-            <span>Interior POV</span>
+          <button class="pill-btn" data-view="walk" title="First-Person Walk Around (WASD + Mouse)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 21v-7a3.5 3.5 0 0 1 7 0v7"/><path d="M12.5 21v-4a3.5 3.5 0 0 1 6 0v4"/></svg>
+            <span>Walk POV (WASD)</span>
           </button>
           <button class="pill-btn" data-view="topdown" title="Top-Down 2D/3D Floorplan">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>

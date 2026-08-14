@@ -958,3 +958,70 @@ html, body {
   border-radius: 4px;
   pointer-events: none;
 }
+
+/* ==========================================================================
+   FIRST-PERSON WALK MODE HUD
+   ========================================================================== */
+
+.walk-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 25;
+}
+
+.walk-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1.5px solid rgba(15, 23, 42, 0.7);
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0,0,0,0.4);
+}
+
+.walk-hud-badge {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+}
+
+.hud-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.hud-pill {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  letter-spacing: 0.05em;
+}
+
+.hud-sub {
+  font-size: 10.5px;
+  color: #cbd5e1;
+}
