@@ -578,12 +578,14 @@ export class RoomBuilder {
     islandGroup.add(islandMesh);
     this.wallMeshes[7] = islandMesh;
 
-    const topRimGeo = new THREE.EdgesGeometry(geom);
-    const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2.5 });
-    const line = new THREE.LineSegments(topRimGeo, lineMat);
-    line.rotation.x = Math.PI / 2;
-    line.position.y = H + 0.05;
-    islandGroup.add(line);
+    // Clean top rim outline (single contour loop on top surface, no vertical side artifacts)
+    const shapePoints = shape.getPoints(64);
+    const rimPoints = shapePoints.map((p) => new THREE.Vector3(p.x, H + 0.04, p.y));
+    rimPoints.push(rimPoints[0].clone());
+    const topRimGeo = new THREE.BufferGeometry().setFromPoints(rimPoints);
+    const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+    const rimLine = new THREE.Line(topRimGeo, lineMat);
+    islandGroup.add(rimLine);
 
     this.roomGroup.add(islandGroup);
   }
