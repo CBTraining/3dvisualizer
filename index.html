@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>3D Room Designer | 4-Section Wall Visualizer & Concepting</title>
+    <meta name="description" content="Interactive 3D Room Designer with rounded rectangle geometry, 4 15ft wall sections, image uploads, direct sketching, and project persistence." />
+    
+    <!-- Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Top Navigation & Controls Bar -->
+      <div id="topbarContainer"></div>
+
+      <!-- Main Visualizer Workspace -->
+      <main class="workspace-layout">
+        <!-- 3D Three.js Viewport -->
+        <section class="viewport-area" id="viewportArea">
+          <div id="threeCanvasContainer"></div>
+
+          <!-- Quick Overlay Badges -->
+          <div class="viewport-overlay-badges">
+            <span class="overlay-tag" id="activeSectionBadge">Active: Wall 1 (North) • 15 ft</span>
+            <span class="overlay-tag" style="background: rgba(2,132,199,0.1); color: #0284c7; border-color: rgba(2,132,199,0.2);">
+              4 × 15ft Rounded Room
+            </span>
+          </div>
+
+          <div class="viewport-hint">
+            Tip: Click any wall directly in 3D to edit • Drag to orbit • Scroll to zoom
+          </div>
+
+          <!-- Bottom Collapsible Concept Sketching Drawer -->
+          <div class="drawer-toggle-bar" id="drawerBar">
+            <div class="drawer-handle" id="drawerHandle">
+              <div class="handle-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/></svg>
+                <span>Live Concept Sketching Studio & Annotation</span>
+              </div>
+              <button class="handle-btn" id="btnToggleDrawer" title="Toggle Concept Sketching Drawer">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="drawerIcon"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </div>
+            <div class="drawer-content" id="drawingContainer"></div>
+          </div>
+        </section>
+
+        <!-- Right Side Wall Inspector / Editor -->
+        <aside class="sidebar-panel" id="sidebarPanel">
+          <div id="wallEditorContainer"></div>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
