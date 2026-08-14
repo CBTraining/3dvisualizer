@@ -217,6 +217,115 @@ html, body {
   color: var(--color-primary);
 }
 
+/* 8-Way Booth Rotation Compass Widget Overlay */
+.booth-compass-widget {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.compass-panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--surface-panel-border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  width: 146px;
+}
+
+.compass-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--surface-panel-border);
+}
+
+.compass-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.compass-step-btns {
+  display: flex;
+  gap: 3px;
+}
+
+.step-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--surface-panel-border);
+  background: #ffffff;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-main);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.step-btn:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border-color: rgba(2, 132, 199, 0.4);
+}
+
+.compass-grid-8 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.dir-btn {
+  height: 28px;
+  border: 1px solid var(--surface-panel-border);
+  background: #f8fafc;
+  border-radius: var(--radius-sm);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dir-btn:hover {
+  background: #ffffff;
+  color: var(--color-text-main);
+  border-color: #cbd5e1;
+  transform: scale(1.04);
+}
+
+.dir-btn.active {
+  background: var(--color-primary);
+  color: #ffffff;
+  border-color: var(--color-primary);
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.3);
+}
+
+.compass-center-dial {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-primary);
+  background: #e0f2fe;
+  border-radius: var(--radius-sm);
+  border: 1px dashed #7dd3fc;
+}
+
 .actions-group {
   display: flex;
   align-items: center;

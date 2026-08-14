@@ -5,7 +5,8 @@ import { Lighting } from './Lighting.js';
 import { FirstPersonController } from './FirstPersonController.js';
 
 /**
- * Scene Manager orchestrating Orbit controls, First-Person WASD Walk controls, raycasting, and camera presets
+ * Scene Manager orchestrating Orbit controls, First-Person WASD Walk controls, 
+ * 8-direction angled camera rotations, raycasting, and camera presets
  */
 export class SceneManager {
   constructor(container, textureManager, onWallSelect) {
@@ -14,6 +15,8 @@ export class SceneManager {
     this.onWallSelect = onWallSelect || (() => {});
 
     this.currentMode = 'orbit'; // 'orbit' | 'walk'
+    this.currentHeadingIndex = 0; // 0 = S, 1 = SW, 2 = W, 3 = NW, 4 = N, 5 = NE, 6 = E, 7 = SE
+    this.elevationAngle = 30; // degrees above ground (keeps wall and floor clearly visible)
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xf1f5f9);
@@ -25,8 +28,8 @@ export class SceneManager {
       0.1,
       250
     );
-    this.defaultCameraPos = new THREE.Vector3(0, 36, 32);
-    this.defaultTarget = new THREE.Vector3(0, 4.5, 0);
+    this.defaultCameraPos = new THREE.Vector3(0, 20, 34);
+    this.defaultTarget = new THREE.Vector3(0, 3.5, 0);
     this.camera.position.copy(this.defaultCameraPos);
 
     // High-DPI WebGL Renderer with soft shadow maps
@@ -58,7 +61,7 @@ export class SceneManager {
       this.updateHudState(isLocked);
     };
 
-    // Lighting & Custom Room
+    // Lighting & Room
     this.lighting = new Lighting(this.scene);
     this.roomBuilder = new RoomBuilder(this.scene, this.textureManager);
 
@@ -69,13 +72,14 @@ export class SceneManager {
     // Camera animation
     this.isAnimatingCamera = false;
     this.animStartTime = 0;
-    this.animDuration = 800;
+    this.animDuration = 700;
     this.animStartPos = new THREE.Vector3();
     this.animEndPos = new THREE.Vector3();
     this.animStartTarget = new THREE.Vector3();
     this.animEndTarget = new THREE.Vector3();
 
     this.createWalkHud();
+    this.createCompassWidget();
     this.bindEvents();
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
@@ -100,6 +104,118 @@ export class SceneManager {
       </div>
     `;
     this.container.appendChild(this.hudEl);
+  }
+
+  createCompassWidget() {
+    this.compassEl = document.createElement('div');
+    this.compassEl.className = 'booth-compass-widget';
+    this.compassEl.innerHTML = `
+      <div class="compass-panel">
+        <div class="compass-header">
+          <span class="compass-title">8-WAY BOOTH ROTATION</span>
+          <div class="compass-step-btns">
+            <button class="step-btn" id="btnRotateCCW" title="Rotate Left 45° (Counter-Clockwise)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+            <button class="step-btn" id="btnRotateCW" title="Rotate Right 45° (Clockwise)">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 8 Cardinal & Intercardinal Direction Buttons -->
+        <div class="compass-grid-8">
+          <button class="dir-btn" data-dir="NW" title="North-West (Angled View)">NW</button>
+          <button class="dir-btn" data-dir="N" title="North / Back (Angled View)">N</button>
+          <button class="dir-btn" data-dir="NE" title="North-East (Angled View)">NE</button>
+          <button class="dir-btn" data-dir="W" title="West / Left (Angled View)">W</button>
+          <div class="compass-center-dial" id="compassCenterDial" title="Current View: South (Front)">S</div>
+          <button class="dir-btn" data-dir="E" title="East / Right (Angled View)">E</button>
+          <button class="dir-btn" data-dir="SW" title="South-West (Angled View)">SW</button>
+          <button class="dir-btn active" data-dir="S" title="South / Front (Angled View)">S</button>
+          <button class="dir-btn" data-dir="SE" title="South-East (Angled View)">SE</button>
+        </div>
+      </div>
+    `;
+
+    this.container.appendChild(this.compassEl);
+    this.setupCompassEvents();
+  }
+
+  setupCompassEvents() {
+    const root = this.compassEl;
+
+    // 8 Direction buttons
+    root.querySelectorAll('.dir-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.rotateToDirection(btn.dataset.dir);
+      });
+    });
+
+    // Step rotation buttons
+    root.querySelector('#btnRotateCCW').addEventListener('click', () => {
+      this.rotateStep(-1);
+    });
+
+    root.querySelector('#btnRotateCW').addEventListener('click', () => {
+      this.rotateStep(1);
+    });
+  }
+
+  updateCompassActive(dirKey) {
+    if (!this.compassEl) return;
+    this.compassEl.querySelectorAll('.dir-btn').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.dir === dirKey);
+    });
+    const dial = this.compassEl.querySelector('#compassCenterDial');
+    if (dial) {
+      dial.textContent = dirKey;
+      dial.title = `Current View: ${dirKey}`;
+    }
+  }
+
+  /**
+   * Rotate to one of the 8 directions at an angled perspective showing wall + floor
+   */
+  rotateToDirection(dirKey) {
+    const directions = ['S', 'SW', 'W', 'NW', 'N', 'NE', 'E', 'SE'];
+    const idx = directions.indexOf(dirKey);
+    if (idx !== -1) {
+      this.currentHeadingIndex = idx;
+      this.apply8WayRotation(idx);
+    }
+  }
+
+  /**
+   * Rotate in 45° increments (step = +1 for CW, -1 for CCW)
+   */
+  rotateStep(step) {
+    this.currentHeadingIndex = (this.currentHeadingIndex + step + 8) % 8;
+    this.apply8WayRotation(this.currentHeadingIndex);
+  }
+
+  apply8WayRotation(idx) {
+    // Switch to orbit mode if in walk mode
+    if (this.currentMode === 'walk') {
+      this.setView('overview');
+    }
+
+    const directions = ['S', 'SW', 'W', 'NW', 'N', 'NE', 'E', 'SE'];
+    const dirKey = directions[idx];
+    this.updateCompassActive(dirKey);
+
+    // Angle in radians (0 is South looking North, +PI/4 is SW, etc.)
+    const angleRad = idx * (Math.PI / 4);
+
+    const distRadius = 34.0; // Distance from center
+    const cameraHeight = 19.5; // Elevated angle so floor and walls are clearly visible together
+    const lookAtTarget = new THREE.Vector3(0, 3.5, 0);
+
+    const camX = Math.sin(angleRad) * -distRadius;
+    const camZ = Math.cos(angleRad) * distRadius;
+
+    const targetCameraPos = new THREE.Vector3(camX, cameraHeight, camZ);
+    this.animateCameraTo(targetCameraPos, lookAtTarget, 650);
   }
 
   updateHudState(isLocked) {
@@ -164,7 +280,7 @@ export class SceneManager {
     }
   }
 
-  animateCameraTo(targetPos, targetLookAt, duration = 800) {
+  animateCameraTo(targetPos, targetLookAt, duration = 700) {
     this.isAnimatingCamera = true;
     this.animStartTime = performance.now();
     this.animDuration = duration;
@@ -183,7 +299,7 @@ export class SceneManager {
       this.currentMode = 'walk';
       this.orbitControls.enabled = false;
       this.hudEl.style.display = 'block';
-      // Spawn just inside south entrance vestibule facing north into room center
+      if (this.compassEl) this.compassEl.style.display = 'none';
       this.fpController.enterWalkMode(new THREE.Vector3(0, 5.2, 10.5), new THREE.Vector3(0, 5.2, 0));
       return;
     }
@@ -193,45 +309,42 @@ export class SceneManager {
     this.fpController.exitWalkMode();
     this.orbitControls.enabled = true;
     this.hudEl.style.display = 'none';
+    if (this.compassEl) this.compassEl.style.display = 'block';
 
     switch (preset) {
       case 'overview':
-        this.animateCameraTo(new THREE.Vector3(0, 36, 32), new THREE.Vector3(0, 4.5, 0));
+        this.rotateToDirection('S');
         break;
 
       case 'topdown':
         this.animateCameraTo(new THREE.Vector3(0, 48, 0.01), new THREE.Vector3(0, 0, 0));
         break;
 
-      case 'wall-1': // North Wall
-        this.animateCameraTo(new THREE.Vector3(0, H / 2, -2), new THREE.Vector3(0, H / 2, -13));
+      case 'wall-1':
+        this.animateCameraTo(new THREE.Vector3(0, H / 2, -2), new THREE.Vector3(0, H / 2, -13.5));
         break;
 
-      case 'wall-2': // Upper West Wall
-        this.animateCameraTo(new THREE.Vector3(-2, H / 2, -4.75), new THREE.Vector3(-13, H / 2, -4.75));
+      case 'wall-2':
+        this.animateCameraTo(new THREE.Vector3(-2, H / 2, -4.75), new THREE.Vector3(-13.5, H / 2, -4.75));
         break;
 
-      case 'wall-3': // Lower West Wall
-        this.animateCameraTo(new THREE.Vector3(-2, H / 2, 4.75), new THREE.Vector3(-13, H / 2, 4.75));
+      case 'wall-3':
+        this.animateCameraTo(new THREE.Vector3(-2, H / 2, 4.75), new THREE.Vector3(-13.5, H / 2, 4.75));
         break;
 
-      case 'wall-4': // South Left
-        this.animateCameraTo(new THREE.Vector3(-5.75, H / 2, 4), new THREE.Vector3(-5.75, H / 2, 13));
+      case 'wall-4':
+        this.animateCameraTo(new THREE.Vector3(1.75, H / 2, 4), new THREE.Vector3(1.75, H / 2, 13.5));
         break;
 
-      case 'wall-5': // South Right
-        this.animateCameraTo(new THREE.Vector3(7.4, H / 2, 4), new THREE.Vector3(7.4, H / 2, 13));
+      case 'wall-5':
+        this.animateCameraTo(new THREE.Vector3(2, H / 2, -0.5), new THREE.Vector3(13.5, H / 2, -0.5));
         break;
 
-      case 'wall-6': // Mid East
-        this.animateCameraTo(new THREE.Vector3(2, H / 2, -0.5), new THREE.Vector3(13, H / 2, -0.5));
+      case 'wall-6':
+        this.animateCameraTo(new THREE.Vector3(4, H / 2, 9.75), new THREE.Vector3(13.5, H / 2, 9.75));
         break;
 
-      case 'wall-7': // SE Booth
-        this.animateCameraTo(new THREE.Vector3(4, H / 2, 9.5), new THREE.Vector3(13, H / 2, 9.5));
-        break;
-
-      case 'wall-8': // Center Island
+      case 'wall-7':
         this.animateCameraTo(new THREE.Vector3(0, 6, 9), new THREE.Vector3(0, 4.5, 0));
         break;
 
