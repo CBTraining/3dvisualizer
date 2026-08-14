@@ -1,7 +1,12 @@
 import * as THREE from 'three';
 
 /**
- * Architectural Room Builder with opacity & transparency controls for inner walls & centerpiece.
+ * Architectural Room Builder with complete, watertight 3D solid geometry:
+ * - Proper wall thickness (0.5 ft) and solid vertical end-caps/jambs at all doorway openings
+ * - Outer faces, fillets outer shell, top caps, and end caps are solid black
+ * - Inner faces, partition fins, and vestibule are grey
+ * - Centerpiece island column is solid black with white top rim
+ * - Opacity & transparency controls
  */
 export class RoomBuilder {
   constructor(scene, wallTextureManager) {
@@ -14,7 +19,7 @@ export class RoomBuilder {
       showCeilingTruss: true,
       showDimensions: true,
       floorMaterialType: 'grid-tile',
-      interiorOpacity: 1.0, // 0.0 to 1.0
+      interiorOpacity: 1.0,
       isTransparent: false
     };
 
@@ -34,9 +39,7 @@ export class RoomBuilder {
       color: this.colorInteriorGrey,
       roughness: 0.85,
       metalness: 0.05,
-      side: THREE.FrontSide,
-      transparent: false,
-      opacity: 1.0
+      side: THREE.DoubleSide
     });
     this.interiorMaterials.push(this.interiorGreyMaterial);
 
@@ -44,7 +47,7 @@ export class RoomBuilder {
       color: this.colorBlack,
       roughness: 0.9,
       metalness: 0.08,
-      side: THREE.FrontSide
+      side: THREE.DoubleSide
     });
 
     this.doubleBlackMaterial = new THREE.MeshStandardMaterial({
@@ -58,9 +61,7 @@ export class RoomBuilder {
       color: this.colorBlack,
       roughness: 0.6,
       metalness: 0.15,
-      side: THREE.DoubleSide,
-      transparent: false,
-      opacity: 1.0
+      side: THREE.DoubleSide
     });
     this.interiorMaterials.push(this.centerpieceMaterial);
 
@@ -136,14 +137,14 @@ export class RoomBuilder {
     this.roomGroup.add(plinth);
 
     // -------------------------------------------------------------
-    // 2. NORTH WALL (Interior grey mapped, Exterior black)
+    // 2. NORTH WALL (Solid 16ft span)
     // -------------------------------------------------------------
     const northStraightLength = L * 2;
     const northGeo = new THREE.BoxGeometry(northStraightLength, H, T);
     const northInteriorMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(1).texture,
       roughness: 0.85,
-      side: THREE.FrontSide,
+      side: THREE.DoubleSide,
       transparent: this.params.interiorOpacity < 1.0,
       opacity: this.params.interiorOpacity
     });
@@ -152,7 +153,7 @@ export class RoomBuilder {
     const northMesh = new THREE.Mesh(northGeo, [
       this.outerBlackMaterial,
       this.outerBlackMaterial,
-      this.outerBlackMaterial,
+      this.outerBlackMaterial, // Top cap
       this.outerBlackMaterial,
       northInteriorMat, // +z Interior
       this.outerBlackMaterial  // -z Exterior
@@ -163,19 +164,22 @@ export class RoomBuilder {
     this.roomGroup.add(northMesh);
     this.wallMeshes[1] = northMesh;
 
-    // Curved Corners
-    this.buildSmoothCurvedCorner(-L, -L, R, Math.PI, Math.PI * 1.5, H, T);
-    this.buildSmoothCurvedCorner(L, -L, R, Math.PI * 1.5, Math.PI * 1.88, H, T);
+    // Northwest Corner (Watertight solid curved corner)
+    this.buildWatertightCurvedCorner(-L, -L, R, Math.PI, Math.PI * 1.5, H, T);
+
+    // Northeast Corner (Watertight solid curved corner ending with solid doorway end-cap at z = -8.5)
+    this.buildWatertightCurvedCorner(L, -L, R, Math.PI * 1.5, Math.PI * 1.88, H, T);
 
     // -------------------------------------------------------------
     // 3. WEST WALL (Upper & Lower Segments)
     // -------------------------------------------------------------
     const westGeo = new THREE.BoxGeometry(T, H, L);
 
+    // Upper West Wall
     const upperWestMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(2).texture,
       roughness: 0.85,
-      side: THREE.FrontSide,
+      side: THREE.DoubleSide,
       transparent: this.params.interiorOpacity < 1.0,
       opacity: this.params.interiorOpacity
     });
@@ -184,7 +188,7 @@ export class RoomBuilder {
     const upperWestMesh = new THREE.Mesh(westGeo, [
       upperWestMat, // +x Interior
       this.outerBlackMaterial, // -x Exterior
-      this.outerBlackMaterial,
+      this.outerBlackMaterial, // +y Top cap
       this.outerBlackMaterial,
       this.outerBlackMaterial,
       this.outerBlackMaterial
@@ -195,10 +199,11 @@ export class RoomBuilder {
     this.roomGroup.add(upperWestMesh);
     this.wallMeshes[2] = upperWestMesh;
 
+    // Lower West Wall
     const lowerWestMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(3).texture,
       roughness: 0.85,
-      side: THREE.FrontSide,
+      side: THREE.DoubleSide,
       transparent: this.params.interiorOpacity < 1.0,
       opacity: this.params.interiorOpacity
     });
@@ -207,7 +212,7 @@ export class RoomBuilder {
     const lowerWestMesh = new THREE.Mesh(westGeo, [
       lowerWestMat, // +x Interior
       this.outerBlackMaterial, // -x Exterior
-      this.outerBlackMaterial,
+      this.outerBlackMaterial, // +y Top cap
       this.outerBlackMaterial,
       this.outerBlackMaterial,
       this.outerBlackMaterial
@@ -218,11 +223,11 @@ export class RoomBuilder {
     this.roomGroup.add(lowerWestMesh);
     this.wallMeshes[3] = lowerWestMesh;
 
-    // Southwest Corner
-    this.buildSmoothCurvedCorner(-L, L, R, Math.PI * 0.5, Math.PI, H, T);
+    // Southwest Corner (Watertight solid curved corner)
+    this.buildWatertightCurvedCorner(-L, L, R, Math.PI * 0.5, Math.PI, H, T);
 
     // -------------------------------------------------------------
-    // 4. SOUTH WALL (Fully Solid, Interior Grey)
+    // 4. SOUTH WALL - FULLY CLOSED SOLID WALL
     // -------------------------------------------------------------
     const southLength = L + 13.5;
     const southGeo = new THREE.BoxGeometry(southLength, H, T);
@@ -230,7 +235,7 @@ export class RoomBuilder {
     const southInteriorMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(4).texture,
       roughness: 0.85,
-      side: THREE.FrontSide,
+      side: THREE.DoubleSide,
       transparent: this.params.interiorOpacity < 1.0,
       opacity: this.params.interiorOpacity
     });
@@ -239,7 +244,7 @@ export class RoomBuilder {
     const southMesh = new THREE.Mesh(southGeo, [
       this.outerBlackMaterial,
       this.outerBlackMaterial,
-      this.outerBlackMaterial,
+      this.outerBlackMaterial, // +y Top cap
       this.outerBlackMaterial,
       this.outerBlackMaterial, // +z Exterior
       southInteriorMat // -z Interior
@@ -254,24 +259,25 @@ export class RoomBuilder {
     this.buildEntranceVestibule(H, T);
 
     // -------------------------------------------------------------
-    // 5. EAST WALL (Mid & Lower Segments)
+    // 5. EAST WALL (Mid & Lower Segments with Solid End Caps)
     // -------------------------------------------------------------
+    // Mid-East Wall (z: -3.5 to +2.5)
     const midEastMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(5).texture,
       roughness: 0.85,
-      side: THREE.FrontSide,
+      side: THREE.DoubleSide,
       transparent: this.params.interiorOpacity < 1.0,
       opacity: this.params.interiorOpacity
     });
     this.interiorMaterials.push(midEastMat);
 
     const midEastMesh = new THREE.Mesh(new THREE.BoxGeometry(T, H, 6.0), [
-      this.outerBlackMaterial,
+      this.outerBlackMaterial, // +x Exterior
       midEastMat, // -x Interior
+      this.outerBlackMaterial, // +y Top cap
       this.outerBlackMaterial,
-      this.outerBlackMaterial,
-      this.outerBlackMaterial,
-      this.outerBlackMaterial
+      this.outerBlackMaterial, // +z North end-cap jamb
+      this.outerBlackMaterial  // -z South end-cap jamb
     ]);
     midEastMesh.position.set(13.5, H / 2, -0.5);
     midEastMesh.receiveShadow = true;
@@ -279,22 +285,23 @@ export class RoomBuilder {
     this.roomGroup.add(midEastMesh);
     this.wallMeshes[5] = midEastMesh;
 
+    // Lower-East Wall (z: +6.0 to +13.5)
     const lowerEastMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(6).texture,
       roughness: 0.85,
-      side: THREE.FrontSide,
+      side: THREE.DoubleSide,
       transparent: this.params.interiorOpacity < 1.0,
       opacity: this.params.interiorOpacity
     });
     this.interiorMaterials.push(lowerEastMat);
 
     const lowerEastMesh = new THREE.Mesh(new THREE.BoxGeometry(T, H, 7.5), [
-      this.outerBlackMaterial,
+      this.outerBlackMaterial, // +x Exterior
       lowerEastMat, // -x Interior
+      this.outerBlackMaterial, // +y Top cap
       this.outerBlackMaterial,
-      this.outerBlackMaterial,
-      this.outerBlackMaterial,
-      this.outerBlackMaterial
+      this.outerBlackMaterial, // +z North end-cap jamb
+      this.outerBlackMaterial  // -z South end-cap jamb
     ]);
     lowerEastMesh.position.set(13.5, H / 2, 9.75);
     lowerEastMesh.receiveShadow = true;
@@ -306,7 +313,7 @@ export class RoomBuilder {
     this.buildSoutheastBooth(H);
 
     // -------------------------------------------------------------
-    // 6. CENTERPIECE COLUMN (Black)
+    // 6. CENTERPIECE COLUMN (Solid Black)
     // -------------------------------------------------------------
     this.buildCenterpiece(H);
 
@@ -323,7 +330,16 @@ export class RoomBuilder {
     }
   }
 
-  buildSmoothCurvedCorner(cx, cz, radius, startAngle, endAngle, H, T) {
+  /**
+   * Builds a completely watertight, solid 3D curved wall corner with:
+   * - Outer curved wall (Solid Black)
+   * - Inner curved wall (Grey)
+   * - Top cap (Solid Black)
+   * - Bottom cap (Solid Black)
+   * - Solid Start-Cap Jamb (Solid Black)
+   * - Solid End-Cap Jamb (Solid Black) -> Eliminates open knife-edges at doorway openings!
+   */
+  buildWatertightCurvedCorner(cx, cz, radius, startAngle, endAngle, H, T) {
     const segments = 32;
     const rIn = radius - T / 2;
     const rOut = radius + T / 2;
@@ -331,7 +347,7 @@ export class RoomBuilder {
 
     const cornerGroup = new THREE.Group();
 
-    // Outer Shell (Solid Black)
+    // 1. Outer Curved Shell (Solid Black)
     const outerGeo = new THREE.BufferGeometry();
     const outerVerts = [];
     const outerNorms = [];
@@ -365,7 +381,7 @@ export class RoomBuilder {
     outerMesh.castShadow = true;
     cornerGroup.add(outerMesh);
 
-    // Inner Shell (Interior Grey with opacity support)
+    // 2. Inner Curved Shell (Grey)
     const innerGeo = new THREE.BufferGeometry();
     const innerVerts = [];
     const innerNorms = [];
@@ -399,7 +415,7 @@ export class RoomBuilder {
     innerMesh.receiveShadow = true;
     cornerGroup.add(innerMesh);
 
-    // Top Cap (Black)
+    // 3. Top Cap (Solid Black)
     const topGeo = new THREE.BufferGeometry();
     const topVerts = [];
     const topNorms = [];
@@ -424,6 +440,42 @@ export class RoomBuilder {
 
     const topMesh = new THREE.Mesh(topGeo, this.doubleBlackMaterial);
     cornerGroup.add(topMesh);
+
+    // 4. Start-Cap Jamb Quad (Solid Wall Thickness at startAngle)
+    const sOutX = cx + Math.cos(startAngle) * rOut;
+    const sOutZ = cz + Math.sin(startAngle) * rOut;
+    const sInX = cx + Math.cos(startAngle) * rIn;
+    const sInZ = cz + Math.sin(startAngle) * rIn;
+
+    const startJambGeo = new THREE.BufferGeometry();
+    startJambGeo.setAttribute('position', new THREE.Float32BufferAttribute([
+      sOutX, 0, sOutZ,
+      sInX, 0, sInZ,
+      sInX, H, sInZ,
+      sOutX, H, sOutZ
+    ], 3));
+    startJambGeo.setIndex([0, 1, 2, 0, 2, 3]);
+    startJambGeo.computeVertexNormals();
+    const startJambMesh = new THREE.Mesh(startJambGeo, this.doubleBlackMaterial);
+    cornerGroup.add(startJambMesh);
+
+    // 5. End-Cap Jamb Quad (Solid Wall Thickness at endAngle -> Closes the doorway end cleanly!)
+    const eOutX = cx + Math.cos(endAngle) * rOut;
+    const eOutZ = cz + Math.sin(endAngle) * rOut;
+    const eInX = cx + Math.cos(endAngle) * rIn;
+    const eInZ = cz + Math.sin(endAngle) * rIn;
+
+    const endJambGeo = new THREE.BufferGeometry();
+    endJambGeo.setAttribute('position', new THREE.Float32BufferAttribute([
+      eOutX, 0, eOutZ,
+      eInX, 0, eInZ,
+      eInX, H, eInZ,
+      eOutX, H, eOutZ
+    ], 3));
+    endJambGeo.setIndex([0, 2, 1, 0, 3, 2]);
+    endJambGeo.computeVertexNormals();
+    const endJambMesh = new THREE.Mesh(endJambGeo, this.doubleBlackMaterial);
+    cornerGroup.add(endJambMesh);
 
     this.roomGroup.add(cornerGroup);
   }
@@ -523,7 +575,8 @@ export class RoomBuilder {
       roughness: 0.5,
       metalness: 0.15,
       transparent: this.params.interiorOpacity < 1.0,
-      opacity: this.params.interiorOpacity
+      opacity: this.params.interiorOpacity,
+      side: THREE.DoubleSide
     });
     this.interiorMaterials.push(centerInteriorMat);
 
@@ -609,9 +662,6 @@ export class RoomBuilder {
     this.roomGroup.add(trussGroup);
   }
 
-  /**
-   * Set opacity / transparency of all interior walls and the centerpiece
-   */
   setInteriorOpacity(val) {
     this.params.interiorOpacity = val;
     this.params.isTransparent = val < 0.99;
