@@ -159,6 +159,64 @@ html, body {
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
+/* Quick Ghost / Transparency Button */
+.btn-ghost-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  background: #f1f5f9;
+  border: 1px solid var(--surface-panel-border);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-ghost-toggle:hover {
+  background: #e2e8f0;
+  color: var(--color-text-main);
+}
+
+.btn-ghost-toggle.active {
+  background: #e0f2fe;
+  border-color: #38bdf8;
+  color: #0284c7;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+.quick-opacity-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.btn-micro {
+  flex: 1;
+  padding: 4px 0;
+  border: 1px solid var(--surface-panel-border);
+  background: #f8fafc;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-micro:hover {
+  background: #ffffff;
+  color: var(--color-text-main);
+}
+
+.btn-micro.active {
+  background: var(--color-primary-light);
+  border-color: rgba(2, 132, 199, 0.4);
+  color: var(--color-primary);
+}
+
 .actions-group {
   display: flex;
   align-items: center;

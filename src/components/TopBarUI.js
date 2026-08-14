@@ -1,7 +1,7 @@
 import { exportProjectToFile, importProjectFromFile, captureCanvasScreenshot } from '../utils/exportImport.js';
 
 /**
- * TopBar UI with view switches, project save/load, room config, and snapshot capture
+ * TopBar UI with view switches, opacity/transparency toggle, project save/load, room config, and snapshot capture
  */
 export class TopBarUI {
   constructor(container, sceneManager, roomBuilder, textureManager, storage, onProjectReset) {
@@ -11,6 +11,8 @@ export class TopBarUI {
     this.textureManager = textureManager;
     this.storage = storage;
     this.onProjectReset = onProjectReset || (() => {});
+
+    this.isGhostMode = false;
 
     this.initUI();
   }
@@ -48,48 +50,52 @@ export class TopBarUI {
           </button>
         </div>
 
+        <!-- Quick X-Ray Transparency Toggle -->
+        <button class="btn-ghost-toggle" id="btnGhostToggle" title="Toggle Transparent / Ghost Inner Walls & Centerpiece">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          <span id="ghostToggleLabel">Transparent Walls: Off</span>
+        </button>
+
         <!-- Action Tools & Settings -->
         <div class="actions-group">
           <!-- Room Settings Dropdown Button -->
           <div class="dropdown-wrap">
-            <button class="btn-secondary" id="btnRoomSettings" title="Room Materials & Dimensions">
+            <button class="btn-secondary" id="btnRoomSettings" title="Room Materials, Opacity & Dimensions">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               <span>Room Options</span>
             </button>
 
-            <!-- Room Settings Modal/Popover -->
+            <!-- Room Settings Popover -->
             <div class="settings-popover" id="settingsPopover" style="display: none;">
-              <h4 class="popover-title">Room Specifications</h4>
-              
+              <h4 class="popover-title">Room & Wall Visibility</h4>
+
+              <!-- Opacity Slider -->
               <div class="popover-field">
-                <label>Flooring Finish</label>
-                <div class="segmented-control" id="floorTypeGroup">
-                  <button class="seg-btn active" data-floor="light-wood">Light Oak</button>
-                  <button class="seg-btn" data-floor="warm-oak">Warm Wood</button>
-                  <button class="seg-btn" data-floor="modern-tile">Porcelain</button>
-                  <button class="seg-btn" data-floor="concrete">Concrete</button>
+                <div class="field-label-row">
+                  <label>Inner Walls & Centerpiece Opacity</label>
+                  <span class="field-val" id="popoverOpacityVal">100%</span>
+                </div>
+                <input type="range" id="interiorOpacitySlider" min="10" max="100" value="100" class="slider" />
+                <div class="quick-opacity-row">
+                  <button class="btn-micro active" data-op="1.0">Solid (100%)</button>
+                  <button class="btn-micro" data-op="0.4">Semi (40%)</button>
+                  <button class="btn-micro" data-op="0.15">Glass (15%)</button>
                 </div>
               </div>
-
-              <div class="popover-field">
-                <label>Wall Section Length</label>
-                <div class="dim-row">
-                  <span class="dim-badge">Default: 4 × 15 ft</span>
-                  <span class="dim-sub">(Total 60 ft perimeter)</span>
+              
+              <div class="popover-field" style="margin-top: 12px;">
+                <label>Flooring Finish</label>
+                <div class="segmented-control" id="floorTypeGroup">
+                  <button class="seg-btn active" data-floor="grid-tile">Studio Grey</button>
+                  <button class="seg-btn" data-floor="light-wood">Light Oak</button>
+                  <button class="seg-btn" data-floor="warm-oak">Warm Wood</button>
                 </div>
               </div>
 
               <div class="popover-checkbox-row">
                 <label class="checkbox-label">
                   <input type="checkbox" id="chkDimensions" checked />
-                  <span>Show 3D Dimension Badges</span>
-                </label>
-              </div>
-
-              <div class="popover-checkbox-row">
-                <label class="checkbox-label">
-                  <input type="checkbox" id="chkCeiling" />
-                  <span>Enclose Ceiling</span>
+                  <span>Show Overhead Dimension Rails</span>
                 </label>
               </div>
             </div>
@@ -113,7 +119,7 @@ export class TopBarUI {
           <!-- Save / Export Project File -->
           <button class="btn-primary" id="btnExportProject" title="Download portable project file (.json)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            <span>Save Project File</span>
+            <span>Save Project</span>
           </button>
         </div>
       </header>
@@ -134,7 +140,55 @@ export class TopBarUI {
       });
     });
 
-    // Room Settings Popover Toggle
+    // Quick Ghost / Transparency Toggle Button
+    const btnGhost = root.querySelector('#btnGhostToggle');
+    const ghostLabel = root.querySelector('#ghostToggleLabel');
+    btnGhost.addEventListener('click', () => {
+      this.isGhostMode = !this.isGhostMode;
+      btnGhost.classList.toggle('active', this.isGhostMode);
+
+      const targetOpacity = this.isGhostMode ? 0.3 : 1.0;
+      this.roomBuilder.setInteriorOpacity(targetOpacity);
+      ghostLabel.textContent = this.isGhostMode ? 'Transparent Walls: ON' : 'Transparent Walls: Off';
+
+      const slider = root.querySelector('#interiorOpacitySlider');
+      const valText = root.querySelector('#popoverOpacityVal');
+      if (slider) slider.value = Math.round(targetOpacity * 100);
+      if (valText) valText.textContent = `${Math.round(targetOpacity * 100)}%`;
+    });
+
+    // Interior Opacity Slider
+    const opacitySlider = root.querySelector('#interiorOpacitySlider');
+    const opacityValText = root.querySelector('#popoverOpacityVal');
+    opacitySlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      opacityValText.textContent = `${val}%`;
+      const op = val / 100;
+      this.roomBuilder.setInteriorOpacity(op);
+
+      this.isGhostMode = op < 0.95;
+      btnGhost.classList.toggle('active', this.isGhostMode);
+      ghostLabel.textContent = this.isGhostMode ? 'Transparent Walls: ON' : 'Transparent Walls: Off';
+    });
+
+    // Quick Opacity Presets
+    root.querySelectorAll('.quick-opacity-row .btn-micro').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        root.querySelectorAll('.quick-opacity-row .btn-micro').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const op = parseFloat(btn.dataset.op);
+        opacitySlider.value = Math.round(op * 100);
+        opacityValText.textContent = `${Math.round(op * 100)}%`;
+        this.roomBuilder.setInteriorOpacity(op);
+
+        this.isGhostMode = op < 0.95;
+        btnGhost.classList.toggle('active', this.isGhostMode);
+        ghostLabel.textContent = this.isGhostMode ? 'Transparent Walls: ON' : 'Transparent Walls: Off';
+      });
+    });
+
+    // Settings Popover Toggle
     const btnSettings = root.querySelector('#btnRoomSettings');
     const popover = root.querySelector('#settingsPopover');
     btnSettings.addEventListener('click', (e) => {
@@ -146,27 +200,6 @@ export class TopBarUI {
       if (!popover.contains(e.target) && e.target !== btnSettings) {
         popover.style.display = 'none';
       }
-    });
-
-    // Floor Type selection
-    root.querySelectorAll('#floorTypeGroup .seg-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        root.querySelectorAll('#floorTypeGroup .seg-btn').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        this.roomBuilder.setFloorMaterial(btn.dataset.floor);
-      });
-    });
-
-    // Dimension Checkbox
-    const chkDimensions = root.querySelector('#chkDimensions');
-    chkDimensions.addEventListener('change', (e) => {
-      this.roomBuilder.toggleDimensions(e.target.checked);
-    });
-
-    // Ceiling Checkbox
-    const chkCeiling = root.querySelector('#chkCeiling');
-    chkCeiling.addEventListener('change', (e) => {
-      this.roomBuilder.toggleCeiling(e.target.checked);
     });
 
     // Snapshot
@@ -196,9 +229,6 @@ export class TopBarUI {
           if (data.walls) {
             await this.textureManager.deserializeAll(data.walls);
             this.roomBuilder.updateTextures();
-          }
-          if (data.dimensions) {
-            this.roomBuilder.setDimensions(data.dimensions);
           }
           this.flashCacheIndicator('Project Loaded from File');
         } catch (err) {
