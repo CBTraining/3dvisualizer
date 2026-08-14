@@ -7,7 +7,7 @@ import { FirstPersonController } from './FirstPersonController.js';
 /**
  * Scene Manager orchestrating Orbit controls, First-Person WASD Walk controls, 
  * 8-direction angled camera rotations, angle amount shortcuts (15°, 30°, 45°, 60°, 90° elevation),
- * raycasting, and camera presets
+ * collapsible non-conflicting compass widget, raycasting, and camera presets
  */
 export class SceneManager {
   constructor(container, textureManager, onWallSelect) {
@@ -20,6 +20,7 @@ export class SceneManager {
     this.currentAngleDegrees = 0; // 0 to 360
     this.elevationAngle = 30; // degrees: 15, 30, 45, 60, 90
     this.rotationStepAmount = 45; // step size: 15°, 45°, 90°
+    this.isCompassCollapsed = false;
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xf1f5f9);
@@ -113,50 +114,57 @@ export class SceneManager {
     this.compassEl = document.createElement('div');
     this.compassEl.className = 'booth-compass-widget';
     this.compassEl.innerHTML = `
-      <div class="compass-panel">
+      <div class="compass-panel" id="compassPanel">
         <div class="compass-header">
           <div class="header-left">
             <span class="compass-title">BOOTH ROTATION</span>
             <span class="compass-deg-badge" id="compassDegBadge">0° (S)</span>
           </div>
-          <div class="compass-step-btns">
-            <button class="step-btn" id="btnRotateCCW" title="Rotate Left (Counter-Clockwise)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-            </button>
-            <button class="step-btn" id="btnRotateCW" title="Rotate Right (Clockwise)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+          <div class="compass-header-actions">
+            <div class="compass-step-btns">
+              <button class="step-btn" id="btnRotateCCW" title="Rotate Left">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              </button>
+              <button class="step-btn" id="btnRotateCW" title="Rotate Right">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+              </button>
+            </div>
+            <button class="step-btn minimize-btn" id="btnToggleCompass" title="Minimize / Expand Compass">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="compassMinIcon"><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
           </div>
         </div>
 
-        <!-- 8 Cardinal & Intercardinal Direction Compass Grid -->
-        <div class="compass-grid-8">
-          <button class="dir-btn" data-dir="NW" data-deg="135" title="North-West (135°)">NW<span class="btn-subdeg">135°</span></button>
-          <button class="dir-btn" data-dir="N" data-deg="180" title="North / Back (180°)">N<span class="btn-subdeg">180°</span></button>
-          <button class="dir-btn" data-dir="NE" data-deg="225" title="North-East (225°)">NE<span class="btn-subdeg">225°</span></button>
-          <button class="dir-btn" data-dir="W" data-deg="90" title="West / Left (90°)">W<span class="btn-subdeg">90°</span></button>
-          <div class="compass-center-dial" id="compassCenterDial" title="Current View: South (0°)">0°</div>
-          <button class="dir-btn" data-dir="E" data-deg="270" title="East / Right (270°)">E<span class="btn-subdeg">270°</span></button>
-          <button class="dir-btn" data-dir="SW" data-deg="45" title="South-West (45°)">SW<span class="btn-subdeg">45°</span></button>
-          <button class="dir-btn active" data-dir="S" data-deg="0" title="South / Front (0°)">S<span class="btn-subdeg">0°</span></button>
-          <button class="dir-btn" data-dir="SE" data-deg="315" title="South-East (315°)">SE<span class="btn-subdeg">315°</span></button>
-        </div>
-
-        <!-- Angle Amount & Elevation Pitch Shortcuts -->
-        <div class="angle-shortcuts-section">
-          <div class="shortcut-row-label">VIEW PITCH / TILT ANGLE</div>
-          <div class="pitch-chips-row">
-            <button class="pitch-chip" data-elev="15" title="Low Angle (15° Eye Level)">15° Eye</button>
-            <button class="pitch-chip active" data-elev="30" title="Balanced Angle (30° Wall + Floor)">30° Opt</button>
-            <button class="pitch-chip" data-elev="45" title="Isometric Angle (45° Diagonal)">45° Iso</button>
-            <button class="pitch-chip" data-elev="60" title="High Angle (60° Elevated)">60° Top</button>
+        <div class="compass-body" id="compassBody">
+          <!-- 8 Cardinal & Intercardinal Direction Compass Grid -->
+          <div class="compass-grid-8">
+            <button class="dir-btn" data-dir="NW" data-deg="135" title="North-West (135°)">NW<span class="btn-subdeg">135°</span></button>
+            <button class="dir-btn" data-dir="N" data-deg="180" title="North / Back (180°)">N<span class="btn-subdeg">180°</span></button>
+            <button class="dir-btn" data-dir="NE" data-deg="225" title="North-East (225°)">NE<span class="btn-subdeg">225°</span></button>
+            <button class="dir-btn" data-dir="W" data-deg="90" title="West / Left (90°)">W<span class="btn-subdeg">90°</span></button>
+            <div class="compass-center-dial" id="compassCenterDial" title="Current View: South (0°)">0°</div>
+            <button class="dir-btn" data-dir="E" data-deg="270" title="East / Right (270°)">E<span class="btn-subdeg">270°</span></button>
+            <button class="dir-btn" data-dir="SW" data-deg="45" title="South-West (45°)">SW<span class="btn-subdeg">45°</span></button>
+            <button class="dir-btn active" data-dir="S" data-deg="0" title="South / Front (0°)">S<span class="btn-subdeg">0°</span></button>
+            <button class="dir-btn" data-dir="SE" data-deg="315" title="South-East (315°)">SE<span class="btn-subdeg">315°</span></button>
           </div>
 
-          <div class="shortcut-row-label" style="margin-top: 6px;">STEP ROTATE INCREMENT</div>
-          <div class="step-increment-row">
-            <button class="step-inc-btn" data-step="15" title="Rotate by 15° per click">±15°</button>
-            <button class="step-inc-btn active" data-step="45" title="Rotate by 45° per click">±45°</button>
-            <button class="step-inc-btn" data-step="90" title="Rotate by 90° per click">±90°</button>
+          <!-- Angle Amount & Elevation Pitch Shortcuts -->
+          <div class="angle-shortcuts-section">
+            <div class="shortcut-row-label">CAMERA TILT / PITCH ANGLE</div>
+            <div class="pitch-chips-row">
+              <button class="pitch-chip" data-elev="15" title="Low Angle (15° Eye Level)">15°</button>
+              <button class="pitch-chip active" data-elev="30" title="Balanced Angle (30° Wall + Floor)">30°</button>
+              <button class="pitch-chip" data-elev="45" title="Isometric Angle (45° Diagonal)">45°</button>
+              <button class="pitch-chip" data-elev="60" title="High Angle (60° Elevated)">60°</button>
+            </div>
+
+            <div class="shortcut-row-label" style="margin-top: 6px;">STEP INCREMENT</div>
+            <div class="step-increment-row">
+              <button class="step-inc-btn" data-step="15" title="Rotate by 15° per click">±15°</button>
+              <button class="step-inc-btn active" data-step="45" title="Rotate by 45° per click">±45°</button>
+              <button class="step-inc-btn" data-step="90" title="Rotate by 90° per click">±90°</button>
+            </div>
           </div>
         </div>
       </div>
@@ -168,6 +176,18 @@ export class SceneManager {
 
   setupCompassEvents() {
     const root = this.compassEl;
+
+    // Toggle minimize
+    const btnToggle = root.querySelector('#btnToggleCompass');
+    const body = root.querySelector('#compassBody');
+    const minIcon = root.querySelector('#compassMinIcon');
+    btnToggle.addEventListener('click', () => {
+      this.isCompassCollapsed = !this.isCompassCollapsed;
+      body.style.display = this.isCompassCollapsed ? 'none' : 'block';
+      minIcon.innerHTML = this.isCompassCollapsed
+        ? '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>'
+        : '<line x1="5" y1="12" x2="19" y2="12"/>';
+    });
 
     // 8 Direction buttons
     root.querySelectorAll('.dir-btn').forEach((btn) => {
