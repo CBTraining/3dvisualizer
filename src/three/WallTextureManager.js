@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 
 /**
- * Manages the dynamic high-res canvas texture for a single wall section.
- * Supports base paint color, image layer (fit, fill, stretch, tile, transform), and concept drawing layer.
+ * Manages dynamic high-res canvas textures for each distinct architectural wall/panel section.
  */
 export class WallTextureSection {
   constructor(id, name, widthFt = 15, heightFt = 9, options = {}) {
@@ -11,23 +10,23 @@ export class WallTextureSection {
     this.widthFt = widthFt;
     this.heightFt = heightFt;
 
-    // High resolution canvas (2048x1024 or proportional)
     this.canvasWidth = 2048;
     this.canvasHeight = Math.round((2048 * heightFt) / widthFt);
+    if (this.canvasHeight < 512) this.canvasHeight = 512;
     
-    // Main composite canvas (used by Three.js)
+    // Main composite canvas
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.canvasWidth;
     this.canvas.height = this.canvasHeight;
     this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
 
-    // Drawing layer canvas (preserves vector-like stroke history / raster drawing)
+    // Drawing layer canvas
     this.drawingCanvas = document.createElement('canvas');
     this.drawingCanvas.width = this.canvasWidth;
     this.drawingCanvas.height = this.canvasHeight;
     this.drawingCtx = this.drawingCanvas.getContext('2d', { willReadFrequently: true });
 
-    // Three.js Texture
+    // Three.js Canvas Texture
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.texture.minFilter = THREE.LinearMipmapLinearFilter;
@@ -35,21 +34,22 @@ export class WallTextureSection {
     this.texture.generateMipmaps = true;
 
     // State properties
-    this.baseColor = options.baseColor || '#f8f8f6';
-    this.image = null; // HTMLImageElement
-    this.imageDataUrl = null; // String
+    this.baseColor = options.baseColor || '#555e42'; // Default olive/khaki or grey
+    this.hasScreen = options.hasScreen || false;
+    this.screenTexture = null;
+    this.image = null;
+    this.imageDataUrl = null;
     this.imageTransform = {
-      fitMode: 'fit', // 'fit', 'fill', 'stretch', 'tile', 'custom'
+      fitMode: 'fit',
       scale: 1.0,
-      offsetX: 0, // normalized -1 to 1
+      offsetX: 0,
       offsetY: 0,
-      rotation: 0, // degrees
+      rotation: 0,
       opacity: 1.0,
-      frameColor: '#222222',
-      frameWidth: 0, // pixels on 2048px canvas
+      frameColor: '#1e293b',
+      frameWidth: 0
     };
 
-    // Strokes history for undo/redo on drawing
     this.strokes = [];
     this.redoStack = [];
 
@@ -78,22 +78,29 @@ export class WallTextureSection {
     this.renderComposite();
   }
 
-  /**
-   * Composite base color + image layer + drawing layer into main canvas & update texture
-   */
   renderComposite() {
     const ctx = this.ctx;
     const w = this.canvasWidth;
     const h = this.canvasHeight;
 
-    // 1. Base Wall Paint / Texture
+    // 1. Base Paint Color
     ctx.fillStyle = this.baseColor;
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle wall texture / plaster noise
-    this.applySubtleWallTexture(ctx, w, h);
+    // Subtle wall texture gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
+    grad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0.04)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
 
-    // 2. Image Layer
+    // 2. Default Mounted Display Screen (if configured and no custom full-image)
+    if (this.hasScreen && !this.image) {
+      this.drawDefaultScreen(ctx, w, h);
+    }
+
+    // 3. Custom Image Layer
     if (this.image && (this.image.complete || this.image.width > 0)) {
       ctx.save();
       ctx.globalAlpha = this.imageTransform.opacity;
@@ -137,9 +144,6 @@ export class WallTextureSection {
         } else if (mode === 'stretch') {
           drawW = w * this.imageTransform.scale;
           drawH = h * this.imageTransform.scale;
-        } else if (mode === 'custom') {
-          drawW = (imgW / 2) * this.imageTransform.scale;
-          drawH = (imgH / 2) * this.imageTransform.scale;
         }
 
         posX += this.imageTransform.offsetX * (w / 2);
@@ -150,56 +154,57 @@ export class WallTextureSection {
           ctx.rotate((this.imageTransform.rotation * Math.PI) / 180);
         }
 
-        // Draw shadow & frame if configured
         if (this.imageTransform.frameWidth > 0) {
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-          ctx.shadowBlur = 24;
-          ctx.shadowOffsetX = 4;
-          ctx.shadowOffsetY = 10;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+          ctx.shadowBlur = 20;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 8;
           ctx.fillStyle = this.imageTransform.frameColor;
           const fw = this.imageTransform.frameWidth;
           ctx.fillRect(-drawW / 2 - fw, -drawH / 2 - fw, drawW + fw * 2, drawH + fw * 2);
           ctx.shadowColor = 'transparent';
         }
 
-        // Draw the image centered
         ctx.drawImage(this.image, -drawW / 2, -drawH / 2, drawW, drawH);
       }
-
       ctx.restore();
     }
 
-    // 3. Drawing Layer
+    // 4. Drawing Layer
     ctx.drawImage(this.drawingCanvas, 0, 0);
 
-    // Subtle dimension & section guide watermark at top/bottom border
-    this.renderWallGuides(ctx, w, h);
+    // Subtle dimension border
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, 10, w - 20, h - 20);
+    ctx.restore();
 
-    // Notify Three.js that texture has changed
     this.texture.needsUpdate = true;
   }
 
-  applySubtleWallTexture(ctx, w, h) {
-    // Subtle gradient to simulate ambient room bounce lighting
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
-    grad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0.04)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
+  drawDefaultScreen(ctx, w, h) {
+    const sw = w * 0.6;
+    const sh = h * 0.45;
+    const sx = (w - sw) / 2;
+    const sy = (h - sh) / 2 - 20;
+
+    // Bezel
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(sx - 10, sy - 10, sw + 20, sh + 20);
+
+    // Screen Panel
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(sx, sy, sw, sh);
+
+    // Screen subtle graphic
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.font = 'bold 36px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('DISPLAY PANEL', w / 2, sy + sh / 2);
   }
 
-  renderWallGuides(ctx, w, h) {
-    // Subtle aesthetic 15ft measurement indicator at the bottom edge
-    ctx.save();
-    ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([8, 8]);
-    ctx.strokeRect(16, 16, w - 32, h - 32);
-    ctx.restore();
-  }
-
-  // Drawing operations
   clearDrawing() {
     this.drawingCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
     this.strokes = [];
@@ -215,16 +220,14 @@ export class WallTextureSection {
 
   undo() {
     if (this.strokes.length > 0) {
-      const popped = this.strokes.pop();
-      this.redoStack.push(popped);
+      this.redoStack.push(this.strokes.pop());
       this.redrawAllStrokes();
     }
   }
 
   redo() {
     if (this.redoStack.length > 0) {
-      const restored = this.redoStack.pop();
-      this.strokes.push(restored);
+      this.strokes.push(this.redoStack.pop());
       this.redrawAllStrokes();
     }
   }
@@ -255,7 +258,7 @@ export class WallTextureSection {
       }
     } else if (stroke.tool === 'highlighter') {
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.35;
+      ctx.globalAlpha = 0.4;
       ctx.strokeStyle = stroke.color || '#ffeb3b';
       ctx.lineWidth = stroke.size || 28;
       ctx.beginPath();
@@ -292,10 +295,6 @@ export class WallTextureSection {
       const ry = Math.min(stroke.start.y, stroke.end.y);
       const rw = Math.abs(stroke.end.x - stroke.start.x);
       const rh = Math.abs(stroke.end.y - stroke.start.y);
-      if (stroke.filled) {
-        ctx.fillStyle = stroke.fillColor || 'rgba(0,0,0,0.1)';
-        ctx.fillRect(rx, ry, rw, rh);
-      }
       ctx.strokeRect(rx, ry, rw, rh);
     } else if (stroke.tool === 'circle') {
       ctx.strokeStyle = stroke.color || '#1e293b';
@@ -306,23 +305,16 @@ export class WallTextureSection {
       const radY = Math.abs(stroke.end.y - stroke.start.y) / 2;
       ctx.beginPath();
       ctx.ellipse(rx, ry, radX, radY, 0, 0, Math.PI * 2);
-      if (stroke.filled) {
-        ctx.fillStyle = stroke.fillColor || 'rgba(0,0,0,0.1)';
-        ctx.fill();
-      }
       ctx.stroke();
     } else if (stroke.tool === 'text') {
       ctx.fillStyle = stroke.color || '#1e293b';
-      ctx.font = `bold ${stroke.fontSize || 36}px "Inter", -apple-system, sans-serif`;
+      ctx.font = `bold ${stroke.fontSize || 36}px "Inter", sans-serif`;
       ctx.fillText(stroke.text, stroke.x, stroke.y);
     }
 
     ctx.restore();
   }
 
-  /**
-   * Serialize state to JSON serializable object
-   */
   serialize() {
     return {
       id: this.id,
@@ -330,26 +322,23 @@ export class WallTextureSection {
       widthFt: this.widthFt,
       heightFt: this.heightFt,
       baseColor: this.baseColor,
+      hasScreen: this.hasScreen,
       imageDataUrl: this.imageDataUrl,
       imageTransform: { ...this.imageTransform },
-      strokes: this.strokes,
-      drawingDataUrl: this.strokes.length > 0 ? this.drawingCanvas.toDataURL('image/png') : null
+      strokes: this.strokes
     };
   }
 
-  /**
-   * Restore state from serialized object
-   */
   async deserialize(data) {
     if (!data) return;
-    this.baseColor = data.baseColor || '#f8f8f6';
+    this.baseColor = data.baseColor || this.baseColor;
+    this.hasScreen = data.hasScreen !== undefined ? data.hasScreen : this.hasScreen;
     if (data.imageTransform) {
       this.imageTransform = { ...this.imageTransform, ...data.imageTransform };
     }
     this.strokes = data.strokes || [];
     this.redoStack = [];
 
-    // Restore Image
     if (data.imageDataUrl) {
       this.imageDataUrl = data.imageDataUrl;
       const img = new Image();
@@ -370,24 +359,31 @@ export class WallTextureSection {
       this.imageDataUrl = null;
     }
 
-    // Redraw strokes
     this.redrawAllStrokes();
   }
 }
 
 /**
- * Manager handling all 4 wall sections in the room
+ * Manager handling all architectural wall sections from the reference floorplan
  */
 export class WallTextureManager {
   constructor(onUpdateCallback) {
     this.onUpdate = onUpdateCallback || (() => {});
     
-    // 4 15ft sections
+    // Wall sections configured matching the reference floorplan colors and layout
     this.sections = {
-      1: new WallTextureSection(1, 'Wall 1 (North)', 15, 9, { baseColor: '#f7f6f2' }),
-      2: new WallTextureSection(2, 'Wall 2 (East)', 15, 9, { baseColor: '#f7f6f2' }),
-      3: new WallTextureSection(3, 'Wall 3 (South)', 15, 9, { baseColor: '#f7f6f2' }),
-      4: new WallTextureSection(4, 'Wall 4 (West)', 15, 9, { baseColor: '#f7f6f2' }),
+      1: new WallTextureSection(1, 'North Wall (Right Screen)', 15, 9, { baseColor: '#5c6448', hasScreen: true }),
+      2: new WallTextureSection(2, 'Upper West Wall (Screen)', 12, 9, { baseColor: '#5c6448', hasScreen: true }),
+      3: new WallTextureSection(3, 'Lower West Wall (Screen)', 12, 9, { baseColor: '#7a818c', hasScreen: true }),
+      4: new WallTextureSection(4, 'South Wall (Left Grey)', 10, 9, { baseColor: '#7a818c', hasScreen: false }),
+      5: new WallTextureSection(5, 'South Wall (Right Screen)', 12, 9, { baseColor: '#5c6448', hasScreen: true }),
+      6: new WallTextureSection(6, 'East Wall (Mid Section)', 10, 9, { baseColor: '#5c6448', hasScreen: false }),
+      7: new WallTextureSection(7, 'East Wall (Lower / Booth)', 10, 9, { baseColor: '#5c6448', hasScreen: false }),
+      8: new WallTextureSection(8, 'Center Island Column', 18, 9, { baseColor: '#475569', hasScreen: false }),
+      9: new WallTextureSection(9, 'North Partition Fin', 8, 9, { baseColor: '#ffffff', hasScreen: false }),
+      10: new WallTextureSection(10, 'West Partition Fin', 8, 9, { baseColor: '#ffffff', hasScreen: false }),
+      11: new WallTextureSection(11, 'East Partition Fin', 8, 9, { baseColor: '#ffffff', hasScreen: false }),
+      12: new WallTextureSection(12, 'South Entrance Vestibule', 8, 9, { baseColor: '#ffffff', hasScreen: false })
     };
 
     this.activeSectionId = 1;

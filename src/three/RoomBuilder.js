@@ -1,512 +1,585 @@
 import * as THREE from 'three';
 
 /**
- * Builds the 3D Room with a Rounded Rectangle floorplan, 4 distinct 15ft wall sections,
- * smooth rounded corner transitions, realistic baseboards, floor, and optional ceiling.
+ * Custom Parametric Room matching the reference floorplan:
+ * - Rounded NW and SW perimeter corners
+ * - Curved NE corner with Upper East Entrance portal
+ * - Mid-East wall with fin and Lower East Passage portal
+ * - Southeast corner 3D square booth enclosure
+ * - South Entrance Vestibule chamber with angled door
+ * - Central rounded-square column/island
+ * - 3 Radial interior partition fins (North, West, East)
+ * - Wall-mounted display screen panels
+ * - Overhead architectural truss/rail
  */
 export class RoomBuilder {
   constructor(scene, wallTextureManager) {
     this.scene = scene;
     this.textureManager = wallTextureManager;
 
-    // Room parameters (in feet, 1 unit = 1 ft)
     this.params = {
-      wallLength: 15,    // 15ft per section
-      wallHeight: 9,     // 9ft ceiling height
-      cornerRadius: 2.5, // 2.5ft smooth corner radius
-      wallThickness: 0.5,
-      showCeiling: false,
+      wallHeight: 9.0,
+      wallThickness: 0.45,
+      showCeilingTruss: true,
       showDimensions: true,
-      floorMaterialType: 'light-wood', // 'light-wood', 'warm-oak', 'modern-tile', 'concrete'
-      wallBaseColor: '#f7f6f2'
+      floorMaterialType: 'grid-tile'
     };
 
     this.roomGroup = new THREE.Group();
     this.roomGroup.name = 'RoomGroup';
     this.scene.add(this.roomGroup);
 
-    // Meshes references
-    this.wallMeshes = {};     // { 1: mesh, 2: mesh, 3: mesh, 4: mesh }
-    this.cornerMeshes = [];
-    this.floorMesh = null;
-    this.ceilingMesh = null;
-    this.baseboardsGroup = null;
-    this.dimensionMarkersGroup = null;
+    this.wallMeshes = {};
+    this.interactiveMeshes = [];
 
-    // Shared materials
-    this.cornerMaterial = new THREE.MeshStandardMaterial({
-      color: 0xf7f6f2,
+    // Base materials
+    this.oliveMaterial = new THREE.MeshStandardMaterial({
+      color: 0x5c6448,
       roughness: 0.85,
       metalness: 0.05,
       side: THREE.DoubleSide
     });
 
-    this.outerWallMaterial = new THREE.MeshStandardMaterial({
-      color: 0xdedcd6,
-      roughness: 0.9,
+    this.greyMaterial = new THREE.MeshStandardMaterial({
+      color: 0x7a818c,
+      roughness: 0.85,
       metalness: 0.05,
       side: THREE.DoubleSide
     });
 
-    this.floorMaterial = this.createFloorMaterial(this.params.floorMaterialType);
-    this.ceilingMaterial = new THREE.MeshStandardMaterial({
-      color: 0xfbfbf9,
-      roughness: 0.95,
-      metalness: 0.02,
-      side: THREE.BackSide
+    this.finMaterial = new THREE.MeshStandardMaterial({
+      color: 0xf1f5f9,
+      roughness: 0.7,
+      metalness: 0.1,
+      side: THREE.DoubleSide
     });
 
-    this.baseboardMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.5,
-      metalness: 0.1
+    this.boothMaterial = new THREE.MeshStandardMaterial({
+      color: 0x22262c,
+      roughness: 0.9,
+      metalness: 0.1,
+      side: THREE.DoubleSide
     });
+
+    this.boothRimMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.4,
+      metalness: 0.2
+    });
+
+    this.floorMaterial = this.createFloorMaterial();
 
     this.build();
   }
 
-  createFloorMaterial(type) {
-    const floorCanvas = document.createElement('canvas');
-    floorCanvas.width = 1024;
-    floorCanvas.height = 1024;
-    const ctx = floorCanvas.getContext('2d');
+  createFloorMaterial() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
 
-    if (type === 'light-wood' || type === 'warm-oak') {
-      // Procedural light wood planks
-      const baseTone = type === 'light-wood' ? '#dfd6c8' : '#c8a882';
-      ctx.fillStyle = baseTone;
-      ctx.fillRect(0, 0, 1024, 1024);
+    // Studio floor matching reference image (light grey grid)
+    ctx.fillStyle = '#cbcbcb';
+    ctx.fillRect(0, 0, 1024, 1024);
 
-      const plankHeight = 64;
-      for (let y = 0; y < 1024; y += plankHeight) {
-        ctx.fillStyle = type === 'light-wood' ? '#d8cebf' : '#bf9e77';
-        if ((y / plankHeight) % 2 === 0) {
-          ctx.fillRect(0, y, 1024, plankHeight);
-        }
+    const step = 64; // 16x16 grid
+    ctx.strokeStyle = '#bababa';
+    ctx.lineWidth = 2;
 
-        // Plank joint lines
-        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(1024, y);
-        ctx.stroke();
+    for (let i = 0; i <= 1024; i += step) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, 1024);
+      ctx.stroke();
 
-        // Vertical staggered joints
-        const offset = ((y / plankHeight) % 3) * 256;
-        for (let x = offset; x < 1024; x += 384) {
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-          ctx.lineTo(x, y + plankHeight);
-          ctx.stroke();
-        }
-
-        // Subtle wood grain lines
-        ctx.strokeStyle = 'rgba(0,0,0,0.03)';
-        ctx.lineWidth = 1;
-        for (let g = 0; g < 4; g++) {
-          ctx.beginPath();
-          ctx.moveTo(0, y + (g * 16) + 4);
-          ctx.bezierCurveTo(300, y + (g * 16) + 2, 700, y + (g * 16) + 6, 1024, y + (g * 16) + 4);
-          ctx.stroke();
-        }
-      }
-    } else if (type === 'modern-tile') {
-      // Modern large porcelain tiles
-      ctx.fillStyle = '#eae7e1';
-      ctx.fillRect(0, 0, 1024, 1024);
-      const tileSize = 256;
-      ctx.strokeStyle = '#c5c2bb';
-      ctx.lineWidth = 4;
-      for (let i = 0; i <= 1024; i += tileSize) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i, 1024);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(0, i);
-        ctx.lineTo(1024, i);
-        ctx.stroke();
-      }
-    } else {
-      // Polished concrete
-      ctx.fillStyle = '#d3d3d0';
-      ctx.fillRect(0, 0, 1024, 1024);
-      // Subtle noise
-      for (let i = 0; i < 5000; i++) {
-        const nx = Math.random() * 1024;
-        const ny = Math.random() * 1024;
-        const radius = Math.random() * 2 + 0.5;
-        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
-        ctx.beginPath();
-        ctx.arc(nx, ny, radius, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      ctx.beginPath();
+      ctx.moveTo(0, i);
+      ctx.lineTo(1024, i);
+      ctx.stroke();
     }
 
-    const texture = new THREE.CanvasTexture(floorCanvas);
+    const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(2, 2);
+    texture.repeat.set(1, 1);
 
     return new THREE.MeshStandardMaterial({
       map: texture,
-      roughness: type.includes('wood') ? 0.35 : 0.25,
+      roughness: 0.32,
       metalness: 0.08,
       side: THREE.DoubleSide
     });
   }
 
-  setFloorMaterial(type) {
-    this.params.floorMaterialType = type;
-    this.floorMaterial = this.createFloorMaterial(type);
-    if (this.floorMesh) {
-      this.floorMesh.material = this.floorMaterial;
-    }
-  }
-
   build() {
-    // Clear existing meshes
+    // Clear existing
     while (this.roomGroup.children.length > 0) {
       const obj = this.roomGroup.children[0];
       this.roomGroup.remove(obj);
       if (obj.geometry) obj.geometry.dispose();
     }
     this.wallMeshes = {};
-    this.cornerMeshes = [];
+    this.interactiveMeshes = [];
 
-    const { wallLength: L, wallHeight: H, cornerRadius: R, wallThickness: T } = this.params;
-    const halfL = L / 2;
-    const halfDepth = halfL + R;
-    const halfWidth = halfL + R;
+    const H = this.params.wallHeight;
+    const T = this.params.wallThickness;
 
     // -------------------------------------------------------------
-    // 1. FLOOR (Rounded Rectangle Shape)
+    // 1. FLOOR & OUTER BOUNDARY
     // -------------------------------------------------------------
-    const floorShape = new THREE.Shape();
-    floorShape.moveTo(-halfL, halfDepth);
-    floorShape.lineTo(halfL, halfDepth);
-    floorShape.absarc(halfL, halfL, R, Math.PI / 2, 0, true);
-    floorShape.lineTo(halfWidth, -halfL);
-    floorShape.absarc(halfL, -halfL, R, 0, -Math.PI / 2, true);
-    floorShape.lineTo(-halfL, -halfDepth);
-    floorShape.absarc(-halfL, -halfL, R, -Math.PI / 2, -Math.PI, true);
-    floorShape.lineTo(-halfWidth, halfL);
-    floorShape.absarc(-halfL, halfL, R, Math.PI, Math.PI / 2, true);
-
-    const floorGeometry = new THREE.ShapeGeometry(floorShape, 32);
-    this.floorMesh = new THREE.Mesh(floorGeometry, this.floorMaterial);
+    const floorGeo = new THREE.PlaneGeometry(36, 36);
+    this.floorMesh = new THREE.Mesh(floorGeo, this.floorMaterial);
     this.floorMesh.rotation.x = -Math.PI / 2;
     this.floorMesh.position.y = 0;
     this.floorMesh.receiveShadow = true;
-    this.floorMesh.name = 'FloorMesh';
     this.roomGroup.add(this.floorMesh);
 
-    // Subtle Ground Shadow Plane underneath
-    const shadowGeo = new THREE.PlaneGeometry((halfWidth + 4) * 2, (halfDepth + 4) * 2);
-    const shadowMat = new THREE.ShadowMaterial({ opacity: 0.15 });
-    const shadowPlane = new THREE.Mesh(shadowGeo, shadowMat);
-    shadowPlane.rotation.x = -Math.PI / 2;
-    shadowPlane.position.y = -0.01;
-    shadowPlane.receiveShadow = true;
-    this.roomGroup.add(shadowPlane);
+    // Outer Dark Gallery Frame / Plinth
+    this.buildOuterPlinth();
 
     // -------------------------------------------------------------
-    // 2. 4 INTERIOR STRAIGHT WALL SECTIONS (15ft each)
+    // 2. NORTH WALL & CURVES
     // -------------------------------------------------------------
-    const wallPlaneGeo = new THREE.PlaneGeometry(L, H);
+    // Straight North Wall (x: -9.5 to +9.5 at z = -13.0)
+    const northGeo = new THREE.BoxGeometry(19.0, H, T);
+    const northMesh = new THREE.Mesh(northGeo, [
+      this.oliveMaterial, // +x
+      this.oliveMaterial, // -x
+      this.oliveMaterial, // +y
+      this.oliveMaterial, // -y
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(1).texture, roughness: 0.85 }), // +z (Interior)
+      this.oliveMaterial  // -z (Exterior)
+    ]);
+    northMesh.position.set(0, H / 2, -13.0);
+    northMesh.receiveShadow = true;
+    northMesh.userData = { sectionId: 1, name: 'North Wall' };
+    this.roomGroup.add(northMesh);
+    this.wallMeshes[1] = northMesh;
 
-    // Wall 1: North Wall (facing south, normal +Z)
-    const wall1Mat = new THREE.MeshStandardMaterial({
-      map: this.textureManager.getSection(1).texture,
-      roughness: 0.85,
-      metalness: 0.05,
-      side: THREE.FrontSide
-    });
-    const wall1 = new THREE.Mesh(wallPlaneGeo, wall1Mat);
-    wall1.position.set(0, H / 2, -halfDepth);
-    wall1.receiveShadow = true;
-    wall1.castShadow = false;
-    wall1.userData = { sectionId: 1, name: 'Wall 1 (North)' };
-    this.roomGroup.add(wall1);
-    this.wallMeshes[1] = wall1;
+    // Northwest Rounded Fillet (Curving from z: -13 to x: -13)
+    this.buildCurvedFillet(-9.5, -9.5, 3.5, Math.PI, Math.PI * 1.5, H, T, this.oliveMaterial);
 
-    // Wall 2: East Wall (facing west, normal -X)
-    const wall2Mat = new THREE.MeshStandardMaterial({
-      map: this.textureManager.getSection(2).texture,
-      roughness: 0.85,
-      metalness: 0.05,
-      side: THREE.FrontSide
-    });
-    const wall2 = new THREE.Mesh(wallPlaneGeo, wall2Mat);
-    wall2.rotation.y = -Math.PI / 2;
-    wall2.position.set(halfWidth, H / 2, 0);
-    wall2.receiveShadow = true;
-    wall2.userData = { sectionId: 2, name: 'Wall 2 (East)' };
-    this.roomGroup.add(wall2);
-    this.wallMeshes[2] = wall2;
-
-    // Wall 3: South Wall (facing north, normal -Z)
-    const wall3Mat = new THREE.MeshStandardMaterial({
-      map: this.textureManager.getSection(3).texture,
-      roughness: 0.85,
-      metalness: 0.05,
-      side: THREE.FrontSide
-    });
-    const wall3 = new THREE.Mesh(wallPlaneGeo, wall3Mat);
-    wall3.rotation.y = Math.PI;
-    wall3.position.set(0, H / 2, halfDepth);
-    wall3.receiveShadow = true;
-    wall3.userData = { sectionId: 3, name: 'Wall 3 (South)' };
-    this.roomGroup.add(wall3);
-    this.wallMeshes[3] = wall3;
-
-    // Wall 4: West Wall (facing east, normal +X)
-    const wall4Mat = new THREE.MeshStandardMaterial({
-      map: this.textureManager.getSection(4).texture,
-      roughness: 0.85,
-      metalness: 0.05,
-      side: THREE.FrontSide
-    });
-    const wall4 = new THREE.Mesh(wallPlaneGeo, wall4Mat);
-    wall4.rotation.y = Math.PI / 2;
-    wall4.position.set(-halfWidth, H / 2, 0);
-    wall4.receiveShadow = true;
-    wall4.userData = { sectionId: 4, name: 'Wall 4 (West)' };
-    this.roomGroup.add(wall4);
-    this.wallMeshes[4] = wall4;
+    // Northeast Rounded Fillet (Curving from z: -13 around to East entrance at z: -8.5)
+    this.buildCurvedFillet(9.5, -9.5, 3.5, Math.PI * 1.5, Math.PI * 1.85, H, T, this.oliveMaterial);
 
     // -------------------------------------------------------------
-    // 3. 4 ROUNDED CORNER SECTIONS
+    // 3. WEST WALL & SW CURVE
     // -------------------------------------------------------------
-    // Quarter cylinder curved meshes
-    const cornerCylinderGeo = new THREE.CylinderGeometry(
-      R, R, H, 24, 1, true, 0, Math.PI / 2
-    );
+    // Upper West Wall (z: -9.5 to 0 at x = -13.0)
+    const upperWestGeo = new THREE.BoxGeometry(T, H, 9.5);
+    const upperWestMesh = new THREE.Mesh(upperWestGeo, [
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(2).texture, roughness: 0.85 }), // +x (Interior)
+      this.oliveMaterial, // -x (Exterior)
+      this.oliveMaterial,
+      this.oliveMaterial,
+      this.oliveMaterial,
+      this.oliveMaterial
+    ]);
+    upperWestMesh.position.set(-13.0, H / 2, -4.75);
+    upperWestMesh.receiveShadow = true;
+    upperWestMesh.userData = { sectionId: 2, name: 'Upper West Wall' };
+    this.roomGroup.add(upperWestMesh);
+    this.wallMeshes[2] = upperWestMesh;
 
-    // Northeast Corner (+X, -Z)
-    const cornerNE = new THREE.Mesh(cornerCylinderGeo, this.cornerMaterial);
-    cornerNE.position.set(halfL, H / 2, -halfL);
-    cornerNE.rotation.y = Math.PI;
-    cornerNE.scale.set(-1, 1, 1); // Flip normal to point inward
-    this.roomGroup.add(cornerNE);
-    this.cornerMeshes.push(cornerNE);
+    // Lower West Wall (z: 0 to +9.5 at x = -13.0)
+    const lowerWestGeo = new THREE.BoxGeometry(T, H, 9.5);
+    const lowerWestMesh = new THREE.Mesh(lowerWestGeo, [
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(3).texture, roughness: 0.85 }), // +x (Interior)
+      this.greyMaterial, // -x (Exterior)
+      this.greyMaterial,
+      this.greyMaterial,
+      this.greyMaterial,
+      this.greyMaterial
+    ]);
+    lowerWestMesh.position.set(-13.0, H / 2, 4.75);
+    lowerWestMesh.receiveShadow = true;
+    lowerWestMesh.userData = { sectionId: 3, name: 'Lower West Wall' };
+    this.roomGroup.add(lowerWestMesh);
+    this.wallMeshes[3] = lowerWestMesh;
 
-    // Southeast Corner (+X, +Z)
-    const cornerSE = new THREE.Mesh(cornerCylinderGeo, this.cornerMaterial);
-    cornerSE.position.set(halfL, H / 2, halfL);
-    cornerSE.rotation.y = -Math.PI / 2;
-    cornerSE.scale.set(-1, 1, 1);
-    this.roomGroup.add(cornerSE);
-    this.cornerMeshes.push(cornerSE);
-
-    // Southwest Corner (-X, +Z)
-    const cornerSW = new THREE.Mesh(cornerCylinderGeo, this.cornerMaterial);
-    cornerSW.position.set(-halfL, H / 2, halfL);
-    cornerSW.rotation.y = 0;
-    cornerSW.scale.set(-1, 1, 1);
-    this.roomGroup.add(cornerSW);
-    this.cornerMeshes.push(cornerSW);
-
-    // Northwest Corner (-X, -Z)
-    const cornerNW = new THREE.Mesh(cornerCylinderGeo, this.cornerMaterial);
-    cornerNW.position.set(-halfL, H / 2, -halfL);
-    cornerNW.rotation.y = Math.PI / 2;
-    cornerNW.scale.set(-1, 1, 1);
-    this.roomGroup.add(cornerNW);
-    this.cornerMeshes.push(cornerNW);
+    // Southwest Rounded Fillet (Curving from x: -13 to South wall at z: +13)
+    this.buildCurvedFillet(-9.5, 9.5, 3.5, Math.PI * 0.5, Math.PI, H, T, this.greyMaterial);
 
     // -------------------------------------------------------------
-    // 4. EXTERIOR WALL CASING (Thickness)
+    // 4. SOUTH WALL & ENTRANCE VESTIBULE
     // -------------------------------------------------------------
-    this.buildExteriorWalls(halfL, halfWidth, halfDepth, H, R, T);
+    // South Left (Grey, x: -9.5 to -2.0 at z = +13.0)
+    const southLeftGeo = new THREE.BoxGeometry(7.5, H, T);
+    const southLeftMesh = new THREE.Mesh(southLeftGeo, [
+      this.greyMaterial,
+      this.greyMaterial,
+      this.greyMaterial,
+      this.greyMaterial,
+      this.greyMaterial, // +z (Exterior)
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(4).texture, roughness: 0.85 }) // -z (Interior)
+    ]);
+    southLeftMesh.position.set(-5.75, H / 2, 13.0);
+    southLeftMesh.receiveShadow = true;
+    southLeftMesh.userData = { sectionId: 4, name: 'South Wall (Left Grey)' };
+    this.roomGroup.add(southLeftMesh);
+    this.wallMeshes[4] = southLeftMesh;
+
+    // South Right (Olive, x: +1.8 to +13.0 at z = +13.0)
+    const southRightGeo = new THREE.BoxGeometry(11.2, H, T);
+    const southRightMesh = new THREE.Mesh(southRightGeo, [
+      this.oliveMaterial,
+      this.oliveMaterial,
+      this.oliveMaterial,
+      this.oliveMaterial,
+      this.oliveMaterial, // +z (Exterior)
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(5).texture, roughness: 0.85 }) // -z (Interior)
+    ]);
+    southRightMesh.position.set(7.4, H / 2, 13.0);
+    southRightMesh.receiveShadow = true;
+    southRightMesh.userData = { sectionId: 5, name: 'South Wall (Right Screen)' };
+    this.roomGroup.add(southRightMesh);
+    this.wallMeshes[5] = southRightMesh;
+
+    // South Entrance Vestibule Walls (Tunnel into room)
+    this.buildEntranceVestibule(H, T);
 
     // -------------------------------------------------------------
-    // 5. BASEBOARDS (Skirting board along perimeter)
+    // 5. EAST WALL & SOUTHEAST BOOTH
     // -------------------------------------------------------------
-    this.buildBaseboards(halfL, halfWidth, halfDepth, R);
+    // Mid-East Wall (z: -3.5 to +2.5 at x = +13.0)
+    const midEastGeo = new THREE.BoxGeometry(T, H, 6.0);
+    const midEastMesh = new THREE.Mesh(midEastGeo, [
+      this.oliveMaterial,
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(6).texture, roughness: 0.85 }), // -x (Interior)
+      this.oliveMaterial,
+      this.oliveMaterial,
+      this.oliveMaterial,
+      this.oliveMaterial
+    ]);
+    midEastMesh.position.set(13.0, H / 2, -0.5);
+    midEastMesh.receiveShadow = true;
+    midEastMesh.userData = { sectionId: 6, name: 'East Wall (Mid Section)' };
+    this.roomGroup.add(midEastMesh);
+    this.wallMeshes[6] = midEastMesh;
+
+    // Lower-East Wall (z: +6.0 to +13.0 at x = +13.0)
+    const lowerEastGeo = new THREE.BoxGeometry(T, H, 7.0);
+    const lowerEastMesh = new THREE.Mesh(lowerEastGeo, [
+      this.oliveMaterial,
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(7).texture, roughness: 0.85 }), // -x (Interior)
+      this.oliveMaterial,
+      this.oliveMaterial,
+      this.oliveMaterial,
+      this.oliveMaterial
+    ]);
+    lowerEastMesh.position.set(13.0, H / 2, 9.5);
+    lowerEastMesh.receiveShadow = true;
+    lowerEastMesh.userData = { sectionId: 7, name: 'East Wall (Lower / Booth)' };
+    this.roomGroup.add(lowerEastMesh);
+    this.wallMeshes[7] = lowerEastMesh;
+
+    // Southeast 3D Square Booth Enclosure
+    this.buildSoutheastBooth(H);
 
     // -------------------------------------------------------------
-    // 6. CEILING (Optional)
+    // 6. CENTRAL ROUNDED SQUARE ISLAND / COLUMN
     // -------------------------------------------------------------
-    if (this.params.showCeiling) {
-      const ceilingGeometry = new THREE.ShapeGeometry(floorShape, 32);
-      this.ceilingMesh = new THREE.Mesh(ceilingGeometry, this.ceilingMaterial);
-      this.ceilingMesh.rotation.x = Math.PI / 2;
-      this.ceilingMesh.position.y = H;
-      this.roomGroup.add(this.ceilingMesh);
+    this.buildCenterIsland(H);
+
+    // -------------------------------------------------------------
+    // 7. RADIAL INTERIOR PARTITION FINS
+    // -------------------------------------------------------------
+    this.buildPartitionFins(H, T);
+
+    // -------------------------------------------------------------
+    // 8. CEILING ARCHITECTURAL TRUSS / DOTTED OUTLINES
+    // -------------------------------------------------------------
+    if (this.params.showCeilingTruss) {
+      this.buildOverheadTruss(H);
+    }
+  }
+
+  buildCurvedFillet(cx, cz, radius, startAngle, endAngle, H, T, material) {
+    const segments = 24;
+    const curveGroup = new THREE.Group();
+
+    const shape = new THREE.Shape();
+    const angleStep = (endAngle - startAngle) / segments;
+
+    // Outer and inner arc points
+    const rIn = radius - T / 2;
+    const rOut = radius + T / 2;
+
+    const outerPoints = [];
+    const innerPoints = [];
+
+    for (let i = 0; i <= segments; i++) {
+      const angle = startAngle + i * angleStep;
+      outerPoints.push(new THREE.Vector2(cx + Math.cos(angle) * rOut, cz + Math.sin(angle) * rOut));
+      innerPoints.push(new THREE.Vector2(cx + Math.cos(angle) * rIn, cz + Math.sin(angle) * rIn));
     }
 
-    // -------------------------------------------------------------
-    // 7. DIMENSION MARKERS & SECTION LABELS
-    // -------------------------------------------------------------
-    if (this.params.showDimensions) {
-      this.buildDimensionMarkers(halfL, halfWidth, halfDepth, H);
+    shape.moveTo(outerPoints[0].x, outerPoints[0].y);
+    for (let i = 1; i <= segments; i++) {
+      shape.lineTo(outerPoints[i].x, outerPoints[i].y);
     }
-  }
+    for (let i = segments; i >= 0; i--) {
+      shape.lineTo(innerPoints[i].x, innerPoints[i].y);
+    }
+    shape.closePath();
 
-  buildExteriorWalls(halfL, halfWidth, halfDepth, H, R, T) {
-    const extGroup = new THREE.Group();
-    extGroup.name = 'ExteriorWalls';
-
-    const extL = this.params.wallLength;
-    const extThicknessGeo = new THREE.BoxGeometry(extL, H, T);
-
-    // North outer back
-    const northExt = new THREE.Mesh(extThicknessGeo, this.outerWallMaterial);
-    northExt.position.set(0, H / 2, -halfDepth - T / 2);
-    northExt.castShadow = true;
-    extGroup.add(northExt);
-
-    // South outer back
-    const southExt = new THREE.Mesh(extThicknessGeo, this.outerWallMaterial);
-    southExt.position.set(0, H / 2, halfDepth + T / 2);
-    southExt.castShadow = true;
-    extGroup.add(southExt);
-
-    // East outer back
-    const eastExt = new THREE.Mesh(extThicknessGeo, this.outerWallMaterial);
-    eastExt.rotation.y = Math.PI / 2;
-    eastExt.position.set(halfWidth + T / 2, H / 2, 0);
-    eastExt.castShadow = true;
-    extGroup.add(eastExt);
-
-    // West outer back
-    const westExt = new THREE.Mesh(extThicknessGeo, this.outerWallMaterial);
-    westExt.rotation.y = Math.PI / 2;
-    westExt.position.set(-halfWidth - T / 2, H / 2, 0);
-    westExt.castShadow = true;
-    extGroup.add(westExt);
-
-    this.roomGroup.add(extGroup);
-  }
-
-  buildBaseboards(halfL, halfWidth, halfDepth, R) {
-    const baseGroup = new THREE.Group();
-    baseGroup.name = 'Baseboards';
-    const bHeight = 0.4;
-    const bDepth = 0.08;
-
-    const baseStraightGeo = new THREE.BoxGeometry(this.params.wallLength, bHeight, bDepth);
-
-    // Wall 1 Baseboard
-    const b1 = new THREE.Mesh(baseStraightGeo, this.baseboardMaterial);
-    b1.position.set(0, bHeight / 2, -halfDepth + bDepth / 2);
-    baseGroup.add(b1);
-
-    // Wall 2 Baseboard
-    const b2 = new THREE.Mesh(baseStraightGeo, this.baseboardMaterial);
-    b2.rotation.y = Math.PI / 2;
-    b2.position.set(halfWidth - bDepth / 2, bHeight / 2, 0);
-    baseGroup.add(b2);
-
-    // Wall 3 Baseboard
-    const b3 = new THREE.Mesh(baseStraightGeo, this.baseboardMaterial);
-    b3.position.set(0, bHeight / 2, halfDepth - bDepth / 2);
-    baseGroup.add(b3);
-
-    // Wall 4 Baseboard
-    const b4 = new THREE.Mesh(baseStraightGeo, this.baseboardMaterial);
-    b4.rotation.y = Math.PI / 2;
-    b4.position.set(-halfWidth + bDepth / 2, bHeight / 2, 0);
-    baseGroup.add(b4);
-
-    this.roomGroup.add(baseGroup);
-  }
-
-  buildDimensionMarkers(halfL, halfWidth, halfDepth, H) {
-    const markersGroup = new THREE.Group();
-    markersGroup.name = 'DimensionMarkers';
-
-    const createLabelSprite = (text) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 320;
-      canvas.height = 80;
-      const ctx = canvas.getContext('2d');
-
-      // Rounded pill badge
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
-      ctx.lineWidth = 2;
-      
-      const r = 18;
-      ctx.beginPath();
-      ctx.roundRect(8, 8, 304, 64, r);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 26px "Inter", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(text, 160, 40);
-
-      const texture = new THREE.CanvasTexture(canvas);
-      const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
-      const sprite = new THREE.Sprite(spriteMat);
-      sprite.scale.set(4, 1, 1);
-      return sprite;
+    const extrudeSettings = {
+      depth: H,
+      bevelEnabled: false
     };
 
-    // 4 Wall Section Badges
-    const badge1 = createLabelSprite('Wall 1 (North) • 15 ft');
-    badge1.position.set(0, H + 0.8, -halfDepth);
-    markersGroup.add(badge1);
-
-    const badge2 = createLabelSprite('Wall 2 (East) • 15 ft');
-    badge2.position.set(halfWidth, H + 0.8, 0);
-    markersGroup.add(badge2);
-
-    const badge3 = createLabelSprite('Wall 3 (South) • 15 ft');
-    badge3.position.set(0, H + 0.8, halfDepth);
-    markersGroup.add(badge3);
-
-    const badge4 = createLabelSprite('Wall 4 (West) • 15 ft');
-    badge4.position.set(-halfWidth, H + 0.8, 0);
-    markersGroup.add(badge4);
-
-    this.roomGroup.add(markersGroup);
-    this.dimensionMarkersGroup = markersGroup;
+    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    const mesh = new THREE.Mesh(geom, material);
+    mesh.rotation.x = Math.PI / 2;
+    mesh.position.y = H;
+    mesh.receiveShadow = true;
+    mesh.castShadow = true;
+    this.roomGroup.add(mesh);
   }
 
-  setDimensions(options = {}) {
-    this.params = { ...this.params, ...options };
-    this.build();
+  buildEntranceVestibule(H, T) {
+    const vestGroup = new THREE.Group();
+    vestGroup.name = 'EntranceVestibule';
+
+    // Left Vestibule Wall (x = -2.0, z from +13.0 to +7.0)
+    const leftWallGeo = new THREE.BoxGeometry(T, H, 6.0);
+    const leftWall = new THREE.Mesh(leftWallGeo, this.finMaterial);
+    leftWall.position.set(-2.0, H / 2, 10.0);
+    leftWall.receiveShadow = true;
+    leftWall.castShadow = true;
+    vestGroup.add(leftWall);
+
+    // Right Vestibule Wall (x = +1.8, z from +13.0 to +7.0)
+    const rightWallGeo = new THREE.BoxGeometry(T, H, 6.0);
+    const rightWall = new THREE.Mesh(rightWallGeo, this.finMaterial);
+    rightWall.position.set(1.8, H / 2, 10.0);
+    rightWall.receiveShadow = true;
+    rightWall.castShadow = true;
+    vestGroup.add(rightWall);
+
+    // Angled Swinging Door (hinged at -2.0, 7.0, swinging out to left at ~35 degrees)
+    const doorGeo = new THREE.BoxGeometry(0.15, H * 0.85, 3.2);
+    const doorMat = new THREE.MeshStandardMaterial({
+      color: 0x5c6448,
+      roughness: 0.6,
+      metalness: 0.1
+    });
+    const door = new THREE.Mesh(doorGeo, doorMat);
+    door.position.set(-2.8, (H * 0.85) / 2, 8.2);
+    door.rotation.y = -Math.PI / 6; // Angled open
+    door.castShadow = true;
+    vestGroup.add(door);
+
+    // Top lintel connector
+    const lintelGeo = new THREE.BoxGeometry(4.0, 0.6, T);
+    const lintel = new THREE.Mesh(lintelGeo, this.finMaterial);
+    lintel.position.set(-0.1, H - 0.3, 7.0);
+    vestGroup.add(lintel);
+
+    this.roomGroup.add(vestGroup);
   }
 
-  toggleCeiling(visible) {
-    this.params.showCeiling = visible;
-    this.build();
+  buildSoutheastBooth(H) {
+    const boothGroup = new THREE.Group();
+    boothGroup.name = 'SoutheastBooth';
+
+    const bSize = 4.2;
+    const bHeight = 7.5;
+    const bThickness = 0.35;
+    const bx = 10.0;
+    const bz = 10.5;
+
+    // Booth Walls: Back (South), Right (East), Front (North), Left (West)
+    // Back wall
+    const bBack = new THREE.Mesh(new THREE.BoxGeometry(bSize, bHeight, bThickness), this.boothMaterial);
+    bBack.position.set(bx, bHeight / 2, bz + bSize / 2);
+    boothGroup.add(bBack);
+
+    // Right wall
+    const bRight = new THREE.Mesh(new THREE.BoxGeometry(bThickness, bHeight, bSize), this.boothMaterial);
+    bRight.position.set(bx + bSize / 2, bHeight / 2, bz);
+    boothGroup.add(bRight);
+
+    // Left wall
+    const bLeft = new THREE.Mesh(new THREE.BoxGeometry(bThickness, bHeight, bSize), this.boothMaterial);
+    bLeft.position.set(bx - bSize / 2, bHeight / 2, bz);
+    boothGroup.add(bLeft);
+
+    // Front partial wall (with entrance portal)
+    const bFront = new THREE.Mesh(new THREE.BoxGeometry(bSize, bHeight, bThickness), this.boothMaterial);
+    bFront.position.set(bx, bHeight / 2, bz - bSize / 2);
+    boothGroup.add(bFront);
+
+    // Top White Rim Border (matching reference image)
+    const rimGeo = new THREE.BoxGeometry(bSize + 0.1, 0.3, bSize + 0.1);
+    const rim = new THREE.Mesh(rimGeo, this.boothRimMaterial);
+    rim.position.set(bx, bHeight + 0.15, bz);
+    boothGroup.add(rim);
+
+    this.roomGroup.add(boothGroup);
   }
 
-  toggleDimensions(visible) {
-    this.params.showDimensions = visible;
-    if (this.dimensionMarkersGroup) {
-      this.dimensionMarkersGroup.visible = visible;
-    }
+  buildCenterIsland(H) {
+    const islandGroup = new THREE.Group();
+    islandGroup.name = 'CenterIsland';
+
+    const size = 4.6;
+    const r = 0.9;
+    const half = size / 2 - r;
+
+    // Rounded rectangle shape
+    const shape = new THREE.Shape();
+    shape.moveTo(-half, size / 2);
+    shape.lineTo(half, size / 2);
+    shape.absarc(half, half, r, Math.PI / 2, 0, true);
+    shape.lineTo(size / 2, -half);
+    shape.absarc(half, -half, r, 0, -Math.PI / 2, true);
+    shape.lineTo(-half, -size / 2);
+    shape.absarc(-half, -half, r, -Math.PI / 2, -Math.PI, true);
+    shape.lineTo(-size / 2, half);
+    shape.absarc(-half, half, r, Math.PI, Math.PI / 2, true);
+
+    const extrudeSettings = {
+      depth: H,
+      bevelEnabled: false
+    };
+
+    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    const islandMesh = new THREE.Mesh(geom, [
+      new THREE.MeshStandardMaterial({
+        map: this.textureManager.getSection(8).texture,
+        roughness: 0.65,
+        metalness: 0.1
+      }),
+      this.finMaterial
+    ]);
+    islandMesh.rotation.x = Math.PI / 2;
+    islandMesh.position.y = H;
+    islandMesh.receiveShadow = true;
+    islandMesh.castShadow = true;
+    islandMesh.userData = { sectionId: 8, name: 'Center Island Column' };
+    islandGroup.add(islandMesh);
+    this.wallMeshes[8] = islandMesh;
+
+    // White top rim
+    const topRimGeo = new THREE.EdgesGeometry(geom);
+    const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+    const line = new THREE.LineSegments(topRimGeo, lineMat);
+    line.rotation.x = Math.PI / 2;
+    line.position.y = H + 0.05;
+    islandGroup.add(line);
+
+    this.roomGroup.add(islandGroup);
+  }
+
+  buildPartitionFins(H, T) {
+    const finsGroup = new THREE.Group();
+    finsGroup.name = 'PartitionFins';
+
+    // 1. North Partition Fin (from x = 0, z = -13.0 extending to z = -6.0)
+    const northFinGeo = new THREE.BoxGeometry(T, H, 7.0);
+    const northFin = new THREE.Mesh(northFinGeo, this.finMaterial);
+    northFin.position.set(0, H / 2, -9.5);
+    northFin.castShadow = true;
+    northFin.receiveShadow = true;
+    northFin.userData = { sectionId: 9, name: 'North Partition Fin' };
+    finsGroup.add(northFin);
+    this.wallMeshes[9] = northFin;
+
+    // 2. West Partition Fin (from z = 0, x = -13.0 extending to x = -6.0)
+    const westFinGeo = new THREE.BoxGeometry(7.0, H, T);
+    const westFin = new THREE.Mesh(westFinGeo, this.finMaterial);
+    westFin.position.set(-9.5, H / 2, 0);
+    westFin.castShadow = true;
+    westFin.receiveShadow = true;
+    westFin.userData = { sectionId: 10, name: 'West Partition Fin' };
+    finsGroup.add(westFin);
+    this.wallMeshes[10] = westFin;
+
+    // 3. East Partition Fin (from z = -0.5, x = +13.0 extending to x = +6.0)
+    const eastFinGeo = new THREE.BoxGeometry(7.0, H, T);
+    const eastFin = new THREE.Mesh(eastFinGeo, this.finMaterial);
+    eastFin.position.set(9.5, H / 2, -0.5);
+    eastFin.castShadow = true;
+    eastFin.receiveShadow = true;
+    eastFin.userData = { sectionId: 11, name: 'East Partition Fin' };
+    finsGroup.add(eastFin);
+    this.wallMeshes[11] = eastFin;
+
+    this.roomGroup.add(finsGroup);
+  }
+
+  buildOverheadTruss(H) {
+    const trussGroup = new THREE.Group();
+    trussGroup.name = 'OverheadTruss';
+
+    // Outer Dotted Boundary Rail
+    const railPoints = [
+      new THREE.Vector3(-14.5, H + 0.1, -14.5),
+      new THREE.Vector3(14.5, H + 0.1, -14.5),
+      new THREE.Vector3(14.5, H + 0.1, 14.5),
+      new THREE.Vector3(-14.5, H + 0.1, 14.5),
+      new THREE.Vector3(-14.5, H + 0.1, -14.5)
+    ];
+
+    const railGeo = new THREE.BufferGeometry().setFromPoints(railPoints);
+    const railMat = new THREE.LineDashedMaterial({
+      color: 0x94a3b8,
+      dashSize: 0.5,
+      gapSize: 0.3,
+      linewidth: 2
+    });
+    const rail = new THREE.Line(railGeo, railMat);
+    rail.computeLineDistances();
+    trussGroup.add(rail);
+
+    this.roomGroup.add(trussGroup);
+  }
+
+  buildOuterPlinth() {
+    const plinthGeo = new THREE.BoxGeometry(34, 0.4, 34);
+    const plinthMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.9
+    });
+    const plinth = new THREE.Mesh(plinthGeo, plinthMat);
+    plinth.position.set(0, -0.21, 0);
+    this.roomGroup.add(plinth);
   }
 
   highlightWall(sectionId) {
-    // Reset all walls roughness/emissive
-    for (let id = 1; id <= 4; id++) {
-      const mesh = this.wallMeshes[id];
-      if (mesh && mesh.material) {
-        if (id === sectionId) {
-          mesh.material.emissive = new THREE.Color(0x1a2e40);
-        } else {
-          mesh.material.emissive = new THREE.Color(0x000000);
+    for (const [id, mesh] of Object.entries(this.wallMeshes)) {
+      if (mesh) {
+        const isSelected = parseInt(id, 10) === parseInt(sectionId, 10);
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach((mat) => {
+            if (mat.emissive) {
+              mat.emissive.set(isSelected ? 0x223a5e : 0x000000);
+            }
+          });
+        } else if (mesh.material && mesh.material.emissive) {
+          mesh.material.emissive.set(isSelected ? 0x223a5e : 0x000000);
         }
       }
     }
   }
 
   updateTextures() {
-    for (let id = 1; id <= 4; id++) {
+    for (let id = 1; id <= 12; id++) {
       const sec = this.textureManager.getSection(id);
-      if (sec && this.wallMeshes[id]) {
-        this.wallMeshes[id].material.map = sec.texture;
-        this.wallMeshes[id].material.needsUpdate = true;
+      const mesh = this.wallMeshes[id];
+      if (sec && mesh) {
+        if (Array.isArray(mesh.material)) {
+          mesh.material.forEach((mat) => {
+            if (mat.map) {
+              mat.map = sec.texture;
+              mat.needsUpdate = true;
+            }
+          });
+        } else if (mesh.material && mesh.material.map) {
+          mesh.material.map = sec.texture;
+          mesh.material.needsUpdate = true;
+        }
       }
     }
   }

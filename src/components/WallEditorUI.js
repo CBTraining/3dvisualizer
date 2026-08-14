@@ -1,5 +1,5 @@
 /**
- * UI Component for Wall Section selection, Image uploads, transformations, and paint finishes.
+ * Wall Editor UI with categorized section selector matching the custom floorplan
  */
 export class WallEditorUI {
   constructor(container, textureManager, roomBuilder, sceneManager, onStateChange) {
@@ -15,29 +15,66 @@ export class WallEditorUI {
   initUI() {
     this.container.innerHTML = `
       <div class="wall-editor-card">
-        <!-- Wall Section Selector Tabs -->
+        <!-- Wall Section Selector Header -->
         <div class="section-tabs-header">
           <div class="section-tabs-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-            <span>WALL SECTIONS (4 x 15 FT)</span>
+            <span>FLOORPLAN ARCHITECTURAL SECTIONS</span>
           </div>
-          <div class="wall-tabs">
-            <button class="wall-tab-btn active" data-section="1">
-              <span class="tab-num">1</span>
-              <span class="tab-label">North (15ft)</span>
-            </button>
-            <button class="wall-tab-btn" data-section="2">
-              <span class="tab-num">2</span>
-              <span class="tab-label">East (15ft)</span>
-            </button>
-            <button class="wall-tab-btn" data-section="3">
-              <span class="tab-num">3</span>
-              <span class="tab-label">South (15ft)</span>
-            </button>
-            <button class="wall-tab-btn" data-section="4">
-              <span class="tab-num">4</span>
-              <span class="tab-label">West (15ft)</span>
-            </button>
+
+          <!-- Section Dropdown / Quick Selector -->
+          <div class="wall-category-group">
+            <label class="cat-label">Perimeter Walls</label>
+            <div class="wall-tabs-grid">
+              <button class="wall-tab-btn active" data-section="1" title="North Wall (Right Screen)">
+                <span class="tab-num">N</span>
+                <span class="tab-label">North</span>
+              </button>
+              <button class="wall-tab-btn" data-section="2" title="Upper West Wall (Screen)">
+                <span class="tab-num">W1</span>
+                <span class="tab-label">Upper W</span>
+              </button>
+              <button class="wall-tab-btn" data-section="3" title="Lower West Wall (Screen)">
+                <span class="tab-num">W2</span>
+                <span class="tab-label">Lower W</span>
+              </button>
+              <button class="wall-tab-btn" data-section="4" title="South Wall (Left Grey)">
+                <span class="tab-num">S1</span>
+                <span class="tab-label">South (L)</span>
+              </button>
+              <button class="wall-tab-btn" data-section="5" title="South Wall (Right Screen)">
+                <span class="tab-num">S2</span>
+                <span class="tab-label">South (R)</span>
+              </button>
+              <button class="wall-tab-btn" data-section="6" title="East Wall (Mid Section)">
+                <span class="tab-num">E1</span>
+                <span class="tab-label">Mid East</span>
+              </button>
+              <button class="wall-tab-btn" data-section="7" title="East Wall (Lower / Booth)">
+                <span class="tab-num">E2</span>
+                <span class="tab-label">SE Booth</span>
+              </button>
+            </div>
+
+            <label class="cat-label" style="margin-top: 8px;">Island & Partitions</label>
+            <div class="wall-tabs-grid-sub">
+              <button class="wall-tab-btn" data-section="8" title="Center Island Column">
+                <span class="tab-num">CTR</span>
+                <span class="tab-label">Center Island</span>
+              </button>
+              <button class="wall-tab-btn" data-section="9" title="North Partition Fin">
+                <span class="tab-num">F-N</span>
+                <span class="tab-label">North Fin</span>
+              </button>
+              <button class="wall-tab-btn" data-section="10" title="West Partition Fin">
+                <span class="tab-num">F-W</span>
+                <span class="tab-label">West Fin</span>
+              </button>
+              <button class="wall-tab-btn" data-section="11" title="East Partition Fin">
+                <span class="tab-num">F-E</span>
+                <span class="tab-label">East Fin</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -45,12 +82,12 @@ export class WallEditorUI {
           <!-- Active Wall Meta & Camera Snap -->
           <div class="wall-meta-bar">
             <div class="active-wall-info">
-              <h3 id="activeWallTitle">Wall 1 (North)</h3>
-              <p class="wall-subtext">Dimensions: 15.0 ft × 9.0 ft • Surface Area: 135 sq ft</p>
+              <h3 id="activeWallTitle">North Wall (Right Screen)</h3>
+              <p class="wall-subtext" id="activeWallSubtext">Surface Area: 135 sq ft • Interactive Display</p>
             </div>
-            <button class="btn-snap-view" id="btnSnapWall" title="Align camera directly in front of this wall">
+            <button class="btn-snap-view" id="btnSnapWall" title="Align camera directly in front of this section">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/></svg>
-              <span>Face Wall</span>
+              <span>Face Section</span>
             </button>
           </div>
 
@@ -58,11 +95,11 @@ export class WallEditorUI {
           <div class="wall-subtabs">
             <button class="subtab-btn active" data-tab="image">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              <span>Image & Art</span>
+              <span>Image / Art</span>
             </button>
             <button class="subtab-btn" data-tab="paint">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/></svg>
-              <span>Wall Paint</span>
+              <span>Color Paint</span>
             </button>
             <button class="subtab-btn" data-tab="samples">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
@@ -72,7 +109,6 @@ export class WallEditorUI {
 
           <!-- Panel 1: Image Upload & Controls -->
           <div class="panel-section" id="panelImage">
-            <!-- Dropzone -->
             <div class="image-dropzone" id="dropzoneEl">
               <input type="file" id="fileInputEl" accept="image/png, image/jpeg, image/webp, image/svg+xml" style="display: none;" />
               <div class="dropzone-inner" id="dropzoneTrigger">
@@ -103,7 +139,7 @@ export class WallEditorUI {
                   <button class="seg-btn active" data-fit="fit">Fit</button>
                   <button class="seg-btn" data-fit="fill">Fill Wall</button>
                   <button class="seg-btn" data-fit="stretch">Stretch</button>
-                  <button class="seg-btn" data-fit="tile">Tile / Repeat</button>
+                  <button class="seg-btn" data-fit="tile">Tile</button>
                 </div>
               </div>
 
@@ -160,57 +196,53 @@ export class WallEditorUI {
                 </div>
                 <div class="segmented-control" id="frameGroup">
                   <button class="seg-btn active" data-frame="0">None</button>
-                  <button class="seg-btn" data-frame="12">Thin Black</button>
+                  <button class="seg-btn" data-frame="12">Thin Frame</button>
                   <button class="seg-btn" data-frame="28">Gallery Frame</button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Panel 2: Wall Paint & Finish -->
+          <!-- Panel 2: Color Paint -->
           <div class="panel-section" id="panelPaint" style="display: none;">
             <div class="control-field">
-              <label>Wall Paint Color</label>
+              <label>Section Base Color</label>
               <div class="paint-swatches-grid">
-                <button class="paint-swatch active" data-color="#f8f8f6" style="background: #f8f8f6" title="Studio Alabaster"></button>
+                <button class="paint-swatch active" data-color="#5c6448" style="background: #5c6448" title="Olive Khaki"></button>
+                <button class="paint-swatch" data-color="#7a818c" style="background: #7a818c" title="Studio Grey"></button>
+                <button class="paint-swatch" data-color="#475569" style="background: #475569" title="Slate Charcoal"></button>
+                <button class="paint-swatch" data-color="#ffffff" style="background: #ffffff" title="Pure White"></button>
                 <button class="paint-swatch" data-color="#ebe7df" style="background: #ebe7df" title="Warm Greige"></button>
-                <button class="paint-swatch" data-color="#dce6e5" style="background: #dce6e5" title="Sage Mist"></button>
-                <button class="paint-swatch" data-color="#dce3ea" style="background: #dce3ea" title="Nordic Sky"></button>
-                <button class="paint-swatch" data-color="#2a3b4c" style="background: #2a3b4c" title="Navy Slate"></button>
-                <button class="paint-swatch" data-color="#2c3038" style="background: #2c3038" title="Charcoal"></button>
-                <button class="paint-swatch" data-color="#e8d5c4" style="background: #e8d5c4" title="Terracotta"></button>
+                <button class="paint-swatch" data-color="#2a3b4c" style="background: #2a3b4c" title="Navy Blue"></button>
                 <button class="paint-swatch" data-color="#24342a" style="background: #24342a" title="Forest Green"></button>
+                <button class="paint-swatch" data-color="#d97706" style="background: #d97706" title="Warm Amber"></button>
               </div>
               <div class="custom-color-row">
                 <span>Custom Paint Tone:</span>
-                <input type="color" id="wallColorPicker" value="#f8f8f6" class="color-picker-input" />
+                <input type="color" id="wallColorPicker" value="#5c6448" class="color-picker-input" />
               </div>
-            </div>
-
-            <div class="control-field">
-              <button class="btn-apply-all" id="btnApplyColorAll">Apply Paint to All 4 Walls</button>
             </div>
           </div>
 
           <!-- Panel 3: Sample Art Gallery -->
           <div class="panel-section" id="panelSamples" style="display: none;">
-            <p class="sample-intro">Click any sample graphic or mural to load onto the active wall:</p>
+            <p class="sample-intro">Click any sample graphic to place on the active wall section:</p>
             <div class="sample-art-grid">
               <button class="sample-card" data-sample="geometric">
                 <div class="sample-thumb geo-thumb"></div>
-                <span>Modern Geometric</span>
+                <span>Modern Bauhaus</span>
               </button>
               <button class="sample-card" data-sample="architectural">
                 <div class="sample-thumb arch-thumb"></div>
-                <span>Blueprint Grid</span>
+                <span>Blueprint Elevation</span>
               </button>
               <button class="sample-card" data-sample="nature">
                 <div class="sample-thumb nature-thumb"></div>
-                <span>Abstract Landscape</span>
+                <span>Abstract Horizon</span>
               </button>
               <button class="sample-card" data-sample="minimal">
                 <div class="sample-thumb minimal-thumb"></div>
-                <span>Minimalist Gallery</span>
+                <span>Studio Exhibition</span>
               </button>
             </div>
           </div>
@@ -225,7 +257,7 @@ export class WallEditorUI {
   setupEvents() {
     const root = this.container;
 
-    // Wall Tabs (1, 2, 3, 4)
+    // Wall Tabs
     root.querySelectorAll('.wall-tab-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const secId = parseInt(btn.dataset.section, 10);
@@ -246,12 +278,12 @@ export class WallEditorUI {
       });
     });
 
-    // Snap Camera to Wall
+    // Snap Camera
     root.querySelector('#btnSnapWall').addEventListener('click', () => {
       this.sceneManager.setView(`wall-${this.textureManager.activeSectionId}`);
     });
 
-    // File Upload Trigger
+    // File Upload
     const fileInput = root.querySelector('#fileInputEl');
     const dropzoneTrigger = root.querySelector('#dropzoneTrigger');
     dropzoneTrigger.addEventListener('click', () => fileInput.click());
@@ -287,7 +319,7 @@ export class WallEditorUI {
       }
     });
 
-    // Fit Mode Segmented Control
+    // Fit Mode
     root.querySelectorAll('#fitModeGroup .seg-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         root.querySelectorAll('#fitModeGroup .seg-btn').forEach((b) => b.classList.remove('active'));
@@ -338,7 +370,7 @@ export class WallEditorUI {
       }
     });
 
-    // Rotation Slider
+    // Rotation
     const rotSlider = root.querySelector('#rotSlider');
     const rotVal = root.querySelector('#rotVal');
     rotSlider.addEventListener('input', (e) => {
@@ -351,7 +383,7 @@ export class WallEditorUI {
       }
     });
 
-    // Opacity Slider
+    // Opacity
     const opacitySlider = root.querySelector('#opacitySlider');
     const opacityVal = root.querySelector('#opacityVal');
     opacitySlider.addEventListener('input', (e) => {
@@ -401,18 +433,6 @@ export class WallEditorUI {
       const active = this.textureManager.getActiveSection();
       if (active) {
         active.setBaseColor(color);
-        this.onStateChange();
-      }
-    });
-
-    // Apply Color to All Walls
-    root.querySelector('#btnApplyColorAll').addEventListener('click', () => {
-      const active = this.textureManager.getActiveSection();
-      if (active) {
-        const color = active.baseColor;
-        for (let i = 1; i <= 4; i++) {
-          this.textureManager.getSection(i).setBaseColor(color);
-        }
         this.onStateChange();
       }
     });
@@ -498,34 +518,20 @@ export class WallEditorUI {
     const ctx = canvas.getContext('2d');
 
     if (type === 'geometric') {
-      // Modern Bauhaus / Geometric composition
       ctx.fillStyle = '#fbf7ee';
       ctx.fillRect(0, 0, 1600, 960);
-
       ctx.fillStyle = '#e76f51';
-      ctx.beginPath();
-      ctx.arc(800, 480, 260, 0, Math.PI * 2);
-      ctx.fill();
-
+      ctx.beginPath(); ctx.arc(800, 480, 260, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#264653';
       ctx.fillRect(200, 150, 400, 660);
-
       ctx.fillStyle = '#e9c46a';
-      ctx.beginPath();
-      ctx.moveTo(700, 700);
-      ctx.lineTo(1300, 700);
-      ctx.lineTo(1000, 200);
-      ctx.closePath();
-      ctx.fill();
-
+      ctx.beginPath(); ctx.moveTo(700, 700); ctx.lineTo(1300, 700); ctx.lineTo(1000, 200); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = '#2a9d8f';
       ctx.lineWidth = 16;
       ctx.strokeRect(300, 250, 1000, 460);
     } else if (type === 'architectural') {
-      // Blueprint grid
       ctx.fillStyle = '#0f2744';
       ctx.fillRect(0, 0, 1600, 960);
-
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
       ctx.lineWidth = 1;
       for (let x = 0; x <= 1600; x += 40) {
@@ -534,54 +540,34 @@ export class WallEditorUI {
       for (let y = 0; y <= 960; y += 40) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1600, y); ctx.stroke();
       }
-
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 4;
       ctx.strokeRect(200, 160, 1200, 640);
-
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 36px monospace';
-      ctx.fillText('SECTION ELEVATION - 15 FT INTERIOR MODULE', 240, 230);
+      ctx.fillText('EXHIBIT ELEVATION MODULE', 240, 230);
     } else if (type === 'nature') {
-      // Landscape art
       const grad = ctx.createLinearGradient(0, 0, 0, 960);
       grad.addColorStop(0, '#fbcfe8');
       grad.addColorStop(0.5, '#fed7aa');
       grad.addColorStop(1, '#bae6fd');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, 1600, 960);
-
       ctx.fillStyle = '#fb7185';
-      ctx.beginPath();
-      ctx.arc(800, 360, 140, 0, Math.PI * 2);
-      ctx.fill();
-
+      ctx.beginPath(); ctx.arc(800, 360, 140, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#334155';
-      ctx.beginPath();
-      ctx.moveTo(0, 960);
-      ctx.lineTo(400, 500);
-      ctx.lineTo(800, 700);
-      ctx.lineTo(1200, 450);
-      ctx.lineTo(1600, 800);
-      ctx.lineTo(1600, 960);
-      ctx.closePath();
-      ctx.fill();
+      ctx.beginPath(); ctx.moveTo(0, 960); ctx.lineTo(400, 500); ctx.lineTo(800, 700); ctx.lineTo(1200, 450); ctx.lineTo(1600, 800); ctx.lineTo(1600, 960); ctx.closePath(); ctx.fill();
     } else {
-      // Minimalist gallery poster
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, 1600, 960);
-
       ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.arc(800, 420, 200, 0, Math.PI);
-      ctx.fill();
-
+      ctx.beginPath(); ctx.arc(800, 420, 200, 0, Math.PI); ctx.fill();
       ctx.fillStyle = '#0f172a';
       ctx.font = '300 48px "Inter", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('N E O   S T U D I O', 800, 750);
+      ctx.fillText('N E O   G A L L E R Y', 800, 750);
       ctx.font = '400 20px "Inter", sans-serif';
-      ctx.fillText('INTERIOR ARCHITECTURAL CONCEPT • 15FT SECTION', 800, 800);
+      ctx.fillText('CUSTOM EXHIBITION ARCHITECTURE', 800, 800);
     }
 
     const dataUrl = canvas.toDataURL('image/png');
