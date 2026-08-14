@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 
 /**
- * Clean, consolidated architectural Room Builder with minimal parts:
- * - South wall is completely CLOSED/SOLID across the exterior bottom boundary
- * - Entrance vestibule is an interior chamber with inward swinging door
- * - East wall has the two open entrance/passage portals
- * - All interior walls are Grey (0x717882), outer walls and centerpiece are Black (0x18191d)
+ * Clean, consolidated architectural Room Builder:
+ * - ALL outside / exterior faces (straight walls, curved corners, top caps, outer casing) are SOLID BLACK (0x18191d)
+ * - ALL inside faces (interior walls, interior curves, fins, vestibule) are GREY (0x717882)
+ * - Centerpiece island column is SOLID BLACK (0x18191d)
+ * - Floor is a distinct contrasting lighter studio grey (0xc4c9d1)
  */
 export class RoomBuilder {
   constructor(scene, wallTextureManager) {
@@ -35,14 +35,14 @@ export class RoomBuilder {
       color: this.colorInteriorGrey,
       roughness: 0.85,
       metalness: 0.05,
-      side: THREE.DoubleSide
+      side: THREE.FrontSide
     });
 
     this.outerBlackMaterial = new THREE.MeshStandardMaterial({
       color: this.colorBlack,
       roughness: 0.9,
       metalness: 0.08,
-      side: THREE.DoubleSide
+      side: THREE.FrontSide
     });
 
     this.centerpieceMaterial = new THREE.MeshStandardMaterial({
@@ -69,7 +69,6 @@ export class RoomBuilder {
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
 
-    // Distinct contrasting lighter studio grey floor
     ctx.fillStyle = '#c4c9d1';
     ctx.fillRect(0, 0, 1024, 1024);
 
@@ -129,16 +128,16 @@ export class RoomBuilder {
     this.roomGroup.add(plinth);
 
     // -------------------------------------------------------------
-    // 2. NORTH WALL (Solid 19ft span, Interior Grey, Exterior Black)
+    // 2. NORTH WALL (Solid 19ft span, Interior Grey, ALL Exterior Black)
     // -------------------------------------------------------------
     const northGeo = new THREE.BoxGeometry(19.0, H, T);
     const northMesh = new THREE.Mesh(northGeo, [
-      this.outerBlackMaterial,
-      this.outerBlackMaterial,
-      this.outerBlackMaterial,
-      this.outerBlackMaterial,
-      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(1).texture, roughness: 0.85 }), // +z Interior
-      this.outerBlackMaterial  // -z Exterior
+      this.outerBlackMaterial, // +x
+      this.outerBlackMaterial, // -x
+      this.outerBlackMaterial, // +y (Top Cap Black)
+      this.outerBlackMaterial, // -y (Bottom Cap Black)
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(1).texture, roughness: 0.85, side: THREE.FrontSide }), // +z Interior
+      this.outerBlackMaterial  // -z Exterior (Solid Black)
     ]);
     northMesh.position.set(0, H / 2, -13.0);
     northMesh.receiveShadow = true;
@@ -146,20 +145,20 @@ export class RoomBuilder {
     this.roomGroup.add(northMesh);
     this.wallMeshes[1] = northMesh;
 
-    // Northwest & Northeast Rounded Fillets
-    this.buildCurvedFillet(-9.5, -9.5, 3.5, Math.PI, Math.PI * 1.5, H, T, this.interiorGreyMaterial);
-    this.buildCurvedFillet(9.5, -9.5, 3.5, Math.PI * 1.5, Math.PI * 1.85, H, T, this.interiorGreyMaterial);
+    // Northwest & Northeast Rounded Fillets (Outer Black, Inner Grey, Top Cap Black)
+    this.buildCurvedFilletTwoTone(-9.5, -9.5, 3.5, Math.PI, Math.PI * 1.5, H, T);
+    this.buildCurvedFilletTwoTone(9.5, -9.5, 3.5, Math.PI * 1.5, Math.PI * 1.85, H, T);
 
     // -------------------------------------------------------------
-    // 3. WEST WALL (Upper & Lower Segments, Interior Grey, Exterior Black)
+    // 3. WEST WALL (Upper & Lower Segments, Interior Grey, ALL Exterior Black)
     // -------------------------------------------------------------
     const westHalfGeo = new THREE.BoxGeometry(T, H, 9.5);
     
     // Upper West Wall
     const upperWestMesh = new THREE.Mesh(westHalfGeo, [
-      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(2).texture, roughness: 0.85 }), // +x Interior
-      this.outerBlackMaterial, // -x Exterior
-      this.outerBlackMaterial,
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(2).texture, roughness: 0.85, side: THREE.FrontSide }), // +x Interior
+      this.outerBlackMaterial, // -x Exterior (Solid Black)
+      this.outerBlackMaterial, // +y Top Cap
       this.outerBlackMaterial,
       this.outerBlackMaterial,
       this.outerBlackMaterial
@@ -172,9 +171,9 @@ export class RoomBuilder {
 
     // Lower West Wall
     const lowerWestMesh = new THREE.Mesh(westHalfGeo, [
-      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(3).texture, roughness: 0.85 }), // +x Interior
-      this.outerBlackMaterial, // -x Exterior
-      this.outerBlackMaterial,
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(3).texture, roughness: 0.85, side: THREE.FrontSide }), // +x Interior
+      this.outerBlackMaterial, // -x Exterior (Solid Black)
+      this.outerBlackMaterial, // +y Top Cap
       this.outerBlackMaterial,
       this.outerBlackMaterial,
       this.outerBlackMaterial
@@ -185,20 +184,20 @@ export class RoomBuilder {
     this.roomGroup.add(lowerWestMesh);
     this.wallMeshes[3] = lowerWestMesh;
 
-    // Southwest Rounded Fillet
-    this.buildCurvedFillet(-9.5, 9.5, 3.5, Math.PI * 0.5, Math.PI, H, T, this.interiorGreyMaterial);
+    // Southwest Rounded Fillet (Outer Black, Inner Grey, Top Cap Black)
+    this.buildCurvedFilletTwoTone(-9.5, 9.5, 3.5, Math.PI * 0.5, Math.PI, H, T);
 
     // -------------------------------------------------------------
-    // 4. SOUTH WALL - FULLY CLOSED & SOLID (x: -9.5 to +13.0 at z: +13.0)
+    // 4. SOUTH WALL - FULLY CLOSED & SOLID (Exterior Solid Black)
     // -------------------------------------------------------------
     const southGeo = new THREE.BoxGeometry(22.5, H, T);
     const southMesh = new THREE.Mesh(southGeo, [
       this.outerBlackMaterial,
       this.outerBlackMaterial,
+      this.outerBlackMaterial, // +y Top Cap Black
       this.outerBlackMaterial,
-      this.outerBlackMaterial,
-      this.outerBlackMaterial, // +z Exterior Black (Fully Closed)
-      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(4).texture, roughness: 0.85 }) // -z Interior Grey
+      this.outerBlackMaterial, // +z Exterior (Solid Black)
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(4).texture, roughness: 0.85, side: THREE.FrontSide }) // -z Interior
     ]);
     southMesh.position.set(1.75, H / 2, 13.0);
     southMesh.receiveShadow = true;
@@ -206,18 +205,18 @@ export class RoomBuilder {
     this.roomGroup.add(southMesh);
     this.wallMeshes[4] = southMesh;
 
-    // South Entrance Vestibule Chamber (Attached inward to solid south wall)
+    // South Entrance Vestibule Chamber
     this.buildEntranceVestibule(H, T);
 
     // -------------------------------------------------------------
-    // 5. EAST WALL (Mid & Lower Segments with Portals)
+    // 5. EAST WALL (Mid & Lower Segments with Portals, Exterior Black)
     // -------------------------------------------------------------
-    // Mid-East Wall (z: -3.5 to +2.5)
+    // Mid-East Wall
     const midEastGeo = new THREE.BoxGeometry(T, H, 6.0);
     const midEastMesh = new THREE.Mesh(midEastGeo, [
-      this.outerBlackMaterial,
-      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(5).texture, roughness: 0.85 }), // -x Interior
-      this.outerBlackMaterial,
+      this.outerBlackMaterial, // +x Exterior (Solid Black)
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(5).texture, roughness: 0.85, side: THREE.FrontSide }), // -x Interior
+      this.outerBlackMaterial, // +y Top Cap Black
       this.outerBlackMaterial,
       this.outerBlackMaterial,
       this.outerBlackMaterial
@@ -228,12 +227,12 @@ export class RoomBuilder {
     this.roomGroup.add(midEastMesh);
     this.wallMeshes[5] = midEastMesh;
 
-    // Lower-East Wall (z: +6.0 to +13.0)
+    // Lower-East Wall
     const lowerEastGeo = new THREE.BoxGeometry(T, H, 7.0);
     const lowerEastMesh = new THREE.Mesh(lowerEastGeo, [
-      this.outerBlackMaterial,
-      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(6).texture, roughness: 0.85 }), // -x Interior
-      this.outerBlackMaterial,
+      this.outerBlackMaterial, // +x Exterior (Solid Black)
+      new THREE.MeshStandardMaterial({ map: this.textureManager.getSection(6).texture, roughness: 0.85, side: THREE.FrontSide }), // -x Interior
+      this.outerBlackMaterial, // +y Top Cap Black
       this.outerBlackMaterial,
       this.outerBlackMaterial,
       this.outerBlackMaterial
@@ -265,46 +264,146 @@ export class RoomBuilder {
     }
   }
 
-  buildCurvedFillet(cx, cz, radius, startAngle, endAngle, H, T, material) {
-    const segments = 20;
-    const shape = new THREE.Shape();
-    const angleStep = (endAngle - startAngle) / segments;
-
+  /**
+   * Builds curved corner fillet with 100% BLACK outer shell, GREY inner shell, and BLACK top cap
+   */
+  buildCurvedFilletTwoTone(cx, cz, radius, startAngle, endAngle, H, T) {
+    const segments = 24;
     const rIn = radius - T / 2;
     const rOut = radius + T / 2;
+    const angleStep = (endAngle - startAngle) / segments;
 
-    const outerPoints = [];
-    const innerPoints = [];
+    const filletGroup = new THREE.Group();
+
+    // 1. Outer Curved Shell (Facing OUTSIDE -> SOLID BLACK)
+    const outerGeo = new THREE.BufferGeometry();
+    const outerVertices = [];
+    const outerNormals = [];
+    const outerUvs = [];
 
     for (let i = 0; i <= segments; i++) {
       const angle = startAngle + i * angleStep;
-      outerPoints.push(new THREE.Vector2(cx + Math.cos(angle) * rOut, cz + Math.sin(angle) * rOut));
-      innerPoints.push(new THREE.Vector2(cx + Math.cos(angle) * rIn, cz + Math.sin(angle) * rIn));
+      const x = cx + Math.cos(angle) * rOut;
+      const z = cz + Math.sin(angle) * rOut;
+      const nx = Math.cos(angle);
+      const nz = Math.sin(angle);
+
+      // Bottom vertex
+      outerVertices.push(x, 0, z);
+      outerNormals.push(nx, 0, nz);
+      outerUvs.push(i / segments, 0);
+
+      // Top vertex
+      outerVertices.push(x, H, z);
+      outerNormals.push(nx, 0, nz);
+      outerUvs.push(i / segments, 1);
     }
 
-    shape.moveTo(outerPoints[0].x, outerPoints[0].y);
-    for (let i = 1; i <= segments; i++) {
-      shape.lineTo(outerPoints[i].x, outerPoints[i].y);
-    }
-    for (let i = segments; i >= 0; i--) {
-      shape.lineTo(innerPoints[i].x, innerPoints[i].y);
-    }
-    shape.closePath();
+    const outerIndices = [];
+    for (let i = 0; i < segments; i++) {
+      const b0 = i * 2;
+      const t0 = i * 2 + 1;
+      const b1 = (i + 1) * 2;
+      const t1 = (i + 1) * 2 + 1;
 
-    const geom = new THREE.ExtrudeGeometry(shape, { depth: H, bevelEnabled: false });
-    const mesh = new THREE.Mesh(geom, material);
-    mesh.rotation.x = Math.PI / 2;
-    mesh.position.y = H;
-    mesh.receiveShadow = true;
-    mesh.castShadow = true;
-    this.roomGroup.add(mesh);
+      outerIndices.push(b0, t0, b1);
+      outerIndices.push(b1, t0, t1);
+    }
+
+    outerGeo.setIndex(outerIndices);
+    outerGeo.setAttribute('position', new THREE.Float32BufferAttribute(outerVertices, 3));
+    outerGeo.setAttribute('normal', new THREE.Float32BufferAttribute(outerNormals, 3));
+    outerGeo.setAttribute('uv', new THREE.Float32BufferAttribute(outerUvs, 2));
+
+    const outerMesh = new THREE.Mesh(outerGeo, this.outerBlackMaterial);
+    outerMesh.castShadow = true;
+    filletGroup.add(outerMesh);
+
+    // 2. Inner Curved Shell (Facing INSIDE -> GREY)
+    const innerGeo = new THREE.BufferGeometry();
+    const innerVertices = [];
+    const innerNormals = [];
+    const innerUvs = [];
+
+    for (let i = 0; i <= segments; i++) {
+      const angle = startAngle + i * angleStep;
+      const x = cx + Math.cos(angle) * rIn;
+      const z = cz + Math.sin(angle) * rIn;
+      const nx = -Math.cos(angle);
+      const nz = -Math.sin(angle);
+
+      innerVertices.push(x, 0, z);
+      innerNormals.push(nx, 0, nz);
+      innerUvs.push(i / segments, 0);
+
+      innerVertices.push(x, H, z);
+      innerNormals.push(nx, 0, nz);
+      innerUvs.push(i / segments, 1);
+    }
+
+    const innerIndices = [];
+    for (let i = 0; i < segments; i++) {
+      const b0 = i * 2;
+      const t0 = i * 2 + 1;
+      const b1 = (i + 1) * 2;
+      const t1 = (i + 1) * 2 + 1;
+
+      innerIndices.push(b0, b1, t0);
+      innerIndices.push(b1, t1, t0);
+    }
+
+    innerGeo.setIndex(innerIndices);
+    innerGeo.setAttribute('position', new THREE.Float32BufferAttribute(innerVertices, 3));
+    innerGeo.setAttribute('normal', new THREE.Float32BufferAttribute(innerNormals, 3));
+    innerGeo.setAttribute('uv', new THREE.Float32BufferAttribute(innerUvs, 2));
+
+    const innerMesh = new THREE.Mesh(innerGeo, this.interiorGreyMaterial);
+    innerMesh.receiveShadow = true;
+    filletGroup.add(innerMesh);
+
+    // 3. Top Cap (BLACK)
+    const topCapGeo = new THREE.BufferGeometry();
+    const topVertices = [];
+    const topNormals = [];
+
+    for (let i = 0; i <= segments; i++) {
+      const angle = startAngle + i * angleStep;
+      const xOut = cx + Math.cos(angle) * rOut;
+      const zOut = cz + Math.sin(angle) * rOut;
+      const xIn = cx + Math.cos(angle) * rIn;
+      const zIn = cz + Math.sin(angle) * rIn;
+
+      topVertices.push(xOut, H, zOut);
+      topNormals.push(0, 1, 0);
+      topVertices.push(xIn, H, zIn);
+      topNormals.push(0, 1, 0);
+    }
+
+    const topIndices = [];
+    for (let i = 0; i < segments; i++) {
+      const o0 = i * 2;
+      const in0 = i * 2 + 1;
+      const o1 = (i + 1) * 2;
+      const in1 = (i + 1) * 2 + 1;
+
+      topIndices.push(o0, o1, in0);
+      topIndices.push(in0, o1, in1);
+    }
+
+    topCapGeo.setIndex(topIndices);
+    topCapGeo.setAttribute('position', new THREE.Float32BufferAttribute(topVertices, 3));
+    topCapGeo.setAttribute('normal', new THREE.Float32BufferAttribute(topNormals, 3));
+
+    const topCapMesh = new THREE.Mesh(topCapGeo, this.outerBlackMaterial);
+    filletGroup.add(topCapMesh);
+
+    this.roomGroup.add(filletGroup);
   }
 
   buildEntranceVestibule(H, T) {
     const vestGroup = new THREE.Group();
     vestGroup.name = 'EntranceVestibule';
 
-    // Left Vestibule Wall (x = -2.0, z from 13.0 to 7.0)
     const leftWallGeo = new THREE.BoxGeometry(T, H, 6.0);
     const leftWall = new THREE.Mesh(leftWallGeo, this.interiorGreyMaterial);
     leftWall.position.set(-2.0, H / 2, 10.0);
@@ -314,7 +413,6 @@ export class RoomBuilder {
     vestGroup.add(leftWall);
     this.wallMeshes[11] = leftWall;
 
-    // Right Vestibule Wall (x = +1.8, z from 13.0 to 7.0)
     const rightWallGeo = new THREE.BoxGeometry(T, H, 6.0);
     const rightWall = new THREE.Mesh(rightWallGeo, this.interiorGreyMaterial);
     rightWall.position.set(1.8, H / 2, 10.0);
@@ -322,7 +420,6 @@ export class RoomBuilder {
     rightWall.castShadow = true;
     vestGroup.add(rightWall);
 
-    // Inward Angled Swinging Door (attached to inward end at -2.0, 7.0)
     const doorGeo = new THREE.BoxGeometry(0.15, H * 0.85, 3.2);
     const door = new THREE.Mesh(doorGeo, this.interiorGreyMaterial);
     door.position.set(-2.8, (H * 0.85) / 2, 8.2);
@@ -330,7 +427,6 @@ export class RoomBuilder {
     door.castShadow = true;
     vestGroup.add(door);
 
-    // Inward Top lintel connector
     const lintelGeo = new THREE.BoxGeometry(4.0, 0.6, T);
     const lintel = new THREE.Mesh(lintelGeo, this.interiorGreyMaterial);
     lintel.position.set(-0.1, H - 0.3, 7.0);
@@ -349,22 +445,22 @@ export class RoomBuilder {
     const bx = 10.0;
     const bz = 10.5;
 
-    // Back wall
+    // Back wall (Exterior Black)
     const bBack = new THREE.Mesh(new THREE.BoxGeometry(bSize, bHeight, bThickness), this.outerBlackMaterial);
     bBack.position.set(bx, bHeight / 2, bz + bSize / 2);
     boothGroup.add(bBack);
 
-    // Right wall
+    // Right wall (Exterior Black)
     const bRight = new THREE.Mesh(new THREE.BoxGeometry(bThickness, bHeight, bSize), this.outerBlackMaterial);
     bRight.position.set(bx + bSize / 2, bHeight / 2, bz);
     boothGroup.add(bRight);
 
-    // Left wall
+    // Left wall (Interior Grey)
     const bLeft = new THREE.Mesh(new THREE.BoxGeometry(bThickness, bHeight, bSize), this.interiorGreyMaterial);
     bLeft.position.set(bx - bSize / 2, bHeight / 2, bz);
     boothGroup.add(bLeft);
 
-    // Front wall
+    // Front wall (Interior Grey)
     const bFront = new THREE.Mesh(new THREE.BoxGeometry(bSize, bHeight, bThickness), this.interiorGreyMaterial);
     bFront.position.set(bx, bHeight / 2, bz - bSize / 2);
     boothGroup.add(bFront);
@@ -429,7 +525,6 @@ export class RoomBuilder {
     const finsGroup = new THREE.Group();
     finsGroup.name = 'PartitionFins';
 
-    // 1. North Partition Fin
     const northFinGeo = new THREE.BoxGeometry(T, H, 7.0);
     const northFin = new THREE.Mesh(northFinGeo, this.interiorGreyMaterial);
     northFin.position.set(0, H / 2, -9.5);
@@ -439,7 +534,6 @@ export class RoomBuilder {
     finsGroup.add(northFin);
     this.wallMeshes[8] = northFin;
 
-    // 2. West Partition Fin
     const westFinGeo = new THREE.BoxGeometry(7.0, H, T);
     const westFin = new THREE.Mesh(westFinGeo, this.interiorGreyMaterial);
     westFin.position.set(-9.5, H / 2, 0);
@@ -449,7 +543,6 @@ export class RoomBuilder {
     finsGroup.add(westFin);
     this.wallMeshes[9] = westFin;
 
-    // 3. East Partition Fin
     const eastFinGeo = new THREE.BoxGeometry(7.0, H, T);
     const eastFin = new THREE.Mesh(eastFinGeo, this.interiorGreyMaterial);
     eastFin.position.set(9.5, H / 2, -0.5);
