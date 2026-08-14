@@ -217,7 +217,7 @@ html, body {
   color: var(--color-primary);
 }
 
-/* 8-Way Booth Rotation Compass Widget Overlay */
+/* 8-Way Booth Rotation Compass Widget Overlay with Angle Shortcuts */
 .booth-compass-widget {
   position: absolute;
   top: 16px;
@@ -227,14 +227,14 @@ html, body {
 }
 
 .compass-panel {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--surface-panel-border);
   border-radius: var(--radius-md);
   padding: 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  width: 146px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.09);
+  width: 164px;
 }
 
 .compass-header {
@@ -246,11 +246,23 @@ html, body {
   border-bottom: 1px solid var(--surface-panel-border);
 }
 
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
 .compass-title {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   color: var(--color-text-muted);
+}
+
+.compass-deg-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--color-primary);
 }
 
 .compass-step-btns {
@@ -285,7 +297,7 @@ html, body {
 }
 
 .dir-btn {
-  height: 28px;
+  height: 32px;
   border: 1px solid var(--surface-panel-border);
   background: #f8fafc;
   border-radius: var(--radius-sm);
@@ -295,15 +307,23 @@ html, body {
   cursor: pointer;
   transition: all 0.15s ease;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  line-height: 1.1;
+}
+
+.btn-subdeg {
+  font-size: 8px;
+  font-weight: 500;
+  opacity: 0.75;
 }
 
 .dir-btn:hover {
   background: #ffffff;
   color: var(--color-text-main);
   border-color: #cbd5e1;
-  transform: scale(1.04);
+  transform: scale(1.03);
 }
 
 .dir-btn.active {
@@ -314,16 +334,70 @@ html, body {
 }
 
 .compass-center-dial {
-  height: 28px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 800;
   color: var(--color-primary);
   background: #e0f2fe;
   border-radius: var(--radius-sm);
   border: 1px dashed #7dd3fc;
+}
+
+.angle-shortcuts-section {
+  margin-top: 9px;
+  padding-top: 7px;
+  border-top: 1px solid var(--surface-panel-border);
+}
+
+.shortcut-row-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.pitch-chips-row,
+.step-increment-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+
+.step-increment-row {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.pitch-chip,
+.step-inc-btn {
+  padding: 4px 0;
+  border: 1px solid var(--surface-panel-border);
+  background: #f8fafc;
+  border-radius: var(--radius-sm);
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s ease;
+}
+
+.pitch-chip:hover,
+.step-inc-btn:hover {
+  background: #ffffff;
+  color: var(--color-text-main);
+  border-color: #cbd5e1;
+}
+
+.pitch-chip.active,
+.step-inc-btn.active {
+  background: var(--color-primary-light);
+  border-color: rgba(2, 132, 199, 0.4);
+  color: var(--color-primary);
+  font-weight: 700;
 }
 
 .actions-group {

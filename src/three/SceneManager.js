@@ -6,7 +6,8 @@ import { FirstPersonController } from './FirstPersonController.js';
 
 /**
  * Scene Manager orchestrating Orbit controls, First-Person WASD Walk controls, 
- * 8-direction angled camera rotations, raycasting, and camera presets
+ * 8-direction angled camera rotations, angle amount shortcuts (15°, 30°, 45°, 60°, 90° elevation),
+ * raycasting, and camera presets
  */
 export class SceneManager {
   constructor(container, textureManager, onWallSelect) {
@@ -16,7 +17,9 @@ export class SceneManager {
 
     this.currentMode = 'orbit'; // 'orbit' | 'walk'
     this.currentHeadingIndex = 0; // 0 = S, 1 = SW, 2 = W, 3 = NW, 4 = N, 5 = NE, 6 = E, 7 = SE
-    this.elevationAngle = 30; // degrees above ground (keeps wall and floor clearly visible)
+    this.currentAngleDegrees = 0; // 0 to 360
+    this.elevationAngle = 30; // degrees: 15, 30, 45, 60, 90
+    this.rotationStepAmount = 45; // step size: 15°, 45°, 90°
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xf1f5f9);
@@ -28,7 +31,7 @@ export class SceneManager {
       0.1,
       250
     );
-    this.defaultCameraPos = new THREE.Vector3(0, 20, 34);
+    this.defaultCameraPos = new THREE.Vector3(0, 19.5, 34);
     this.defaultTarget = new THREE.Vector3(0, 3.5, 0);
     this.camera.position.copy(this.defaultCameraPos);
 
@@ -72,7 +75,7 @@ export class SceneManager {
     // Camera animation
     this.isAnimatingCamera = false;
     this.animStartTime = 0;
-    this.animDuration = 700;
+    this.animDuration = 650;
     this.animStartPos = new THREE.Vector3();
     this.animEndPos = new THREE.Vector3();
     this.animStartTarget = new THREE.Vector3();
@@ -112,28 +115,49 @@ export class SceneManager {
     this.compassEl.innerHTML = `
       <div class="compass-panel">
         <div class="compass-header">
-          <span class="compass-title">8-WAY BOOTH ROTATION</span>
+          <div class="header-left">
+            <span class="compass-title">BOOTH ROTATION</span>
+            <span class="compass-deg-badge" id="compassDegBadge">0° (S)</span>
+          </div>
           <div class="compass-step-btns">
-            <button class="step-btn" id="btnRotateCCW" title="Rotate Left 45° (Counter-Clockwise)">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <button class="step-btn" id="btnRotateCCW" title="Rotate Left (Counter-Clockwise)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
             </button>
-            <button class="step-btn" id="btnRotateCW" title="Rotate Right 45° (Clockwise)">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+            <button class="step-btn" id="btnRotateCW" title="Rotate Right (Clockwise)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
             </button>
           </div>
         </div>
 
-        <!-- 8 Cardinal & Intercardinal Direction Buttons -->
+        <!-- 8 Cardinal & Intercardinal Direction Compass Grid -->
         <div class="compass-grid-8">
-          <button class="dir-btn" data-dir="NW" title="North-West (Angled View)">NW</button>
-          <button class="dir-btn" data-dir="N" title="North / Back (Angled View)">N</button>
-          <button class="dir-btn" data-dir="NE" title="North-East (Angled View)">NE</button>
-          <button class="dir-btn" data-dir="W" title="West / Left (Angled View)">W</button>
-          <div class="compass-center-dial" id="compassCenterDial" title="Current View: South (Front)">S</div>
-          <button class="dir-btn" data-dir="E" title="East / Right (Angled View)">E</button>
-          <button class="dir-btn" data-dir="SW" title="South-West (Angled View)">SW</button>
-          <button class="dir-btn active" data-dir="S" title="South / Front (Angled View)">S</button>
-          <button class="dir-btn" data-dir="SE" title="South-East (Angled View)">SE</button>
+          <button class="dir-btn" data-dir="NW" data-deg="135" title="North-West (135°)">NW<span class="btn-subdeg">135°</span></button>
+          <button class="dir-btn" data-dir="N" data-deg="180" title="North / Back (180°)">N<span class="btn-subdeg">180°</span></button>
+          <button class="dir-btn" data-dir="NE" data-deg="225" title="North-East (225°)">NE<span class="btn-subdeg">225°</span></button>
+          <button class="dir-btn" data-dir="W" data-deg="90" title="West / Left (90°)">W<span class="btn-subdeg">90°</span></button>
+          <div class="compass-center-dial" id="compassCenterDial" title="Current View: South (0°)">0°</div>
+          <button class="dir-btn" data-dir="E" data-deg="270" title="East / Right (270°)">E<span class="btn-subdeg">270°</span></button>
+          <button class="dir-btn" data-dir="SW" data-deg="45" title="South-West (45°)">SW<span class="btn-subdeg">45°</span></button>
+          <button class="dir-btn active" data-dir="S" data-deg="0" title="South / Front (0°)">S<span class="btn-subdeg">0°</span></button>
+          <button class="dir-btn" data-dir="SE" data-deg="315" title="South-East (315°)">SE<span class="btn-subdeg">315°</span></button>
+        </div>
+
+        <!-- Angle Amount & Elevation Pitch Shortcuts -->
+        <div class="angle-shortcuts-section">
+          <div class="shortcut-row-label">VIEW PITCH / TILT ANGLE</div>
+          <div class="pitch-chips-row">
+            <button class="pitch-chip" data-elev="15" title="Low Angle (15° Eye Level)">15° Eye</button>
+            <button class="pitch-chip active" data-elev="30" title="Balanced Angle (30° Wall + Floor)">30° Opt</button>
+            <button class="pitch-chip" data-elev="45" title="Isometric Angle (45° Diagonal)">45° Iso</button>
+            <button class="pitch-chip" data-elev="60" title="High Angle (60° Elevated)">60° Top</button>
+          </div>
+
+          <div class="shortcut-row-label" style="margin-top: 6px;">STEP ROTATE INCREMENT</div>
+          <div class="step-increment-row">
+            <button class="step-inc-btn" data-step="15" title="Rotate by 15° per click">±15°</button>
+            <button class="step-inc-btn active" data-step="45" title="Rotate by 45° per click">±45°</button>
+            <button class="step-inc-btn" data-step="90" title="Rotate by 90° per click">±90°</button>
+          </div>
         </div>
       </div>
     `;
@@ -148,73 +172,98 @@ export class SceneManager {
     // 8 Direction buttons
     root.querySelectorAll('.dir-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
-        this.rotateToDirection(btn.dataset.dir);
+        const deg = parseInt(btn.dataset.deg, 10);
+        this.rotateToHeadingDegrees(deg);
       });
     });
 
     // Step rotation buttons
     root.querySelector('#btnRotateCCW').addEventListener('click', () => {
-      this.rotateStep(-1);
+      this.rotateStep(-this.rotationStepAmount);
     });
 
     root.querySelector('#btnRotateCW').addEventListener('click', () => {
-      this.rotateStep(1);
+      this.rotateStep(this.rotationStepAmount);
+    });
+
+    // Elevation pitch angle chips (15°, 30°, 45°, 60°)
+    root.querySelectorAll('.pitch-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        root.querySelectorAll('.pitch-chip').forEach((c) => c.classList.remove('active'));
+        chip.classList.add('active');
+        this.elevationAngle = parseInt(chip.dataset.elev, 10);
+        this.applyCurrentRotation();
+      });
+    });
+
+    // Step increment amount buttons (15°, 45°, 90°)
+    root.querySelectorAll('.step-inc-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        root.querySelectorAll('.step-inc-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.rotationStepAmount = parseInt(btn.dataset.step, 10);
+      });
     });
   }
 
-  updateCompassActive(dirKey) {
+  updateCompassActive(deg) {
     if (!this.compassEl) return;
+    const normalizedDeg = ((deg % 360) + 360) % 360;
+
+    const dirMap = {
+      0: 'S', 45: 'SW', 90: 'W', 135: 'NW', 180: 'N', 225: 'NE', 270: 'E', 315: 'SE'
+    };
+    const closest45 = Math.round(normalizedDeg / 45) * 45 % 360;
+    const dirName = dirMap[closest45] || `${normalizedDeg}°`;
+
     this.compassEl.querySelectorAll('.dir-btn').forEach((btn) => {
-      btn.classList.toggle('active', btn.dataset.dir === dirKey);
+      const btnDeg = parseInt(btn.dataset.deg, 10);
+      btn.classList.toggle('active', btnDeg === closest45);
     });
+
     const dial = this.compassEl.querySelector('#compassCenterDial');
     if (dial) {
-      dial.textContent = dirKey;
-      dial.title = `Current View: ${dirKey}`;
+      dial.textContent = `${normalizedDeg}°`;
+      dial.title = `Current View: ${dirName} (${normalizedDeg}°)`;
+    }
+
+    const badge = this.compassEl.querySelector('#compassDegBadge');
+    if (badge) {
+      badge.textContent = `${normalizedDeg}° (${dirName})`;
     }
   }
 
-  /**
-   * Rotate to one of the 8 directions at an angled perspective showing wall + floor
-   */
-  rotateToDirection(dirKey) {
-    const directions = ['S', 'SW', 'W', 'NW', 'N', 'NE', 'E', 'SE'];
-    const idx = directions.indexOf(dirKey);
-    if (idx !== -1) {
-      this.currentHeadingIndex = idx;
-      this.apply8WayRotation(idx);
-    }
+  rotateToHeadingDegrees(deg) {
+    this.currentAngleDegrees = ((deg % 360) + 360) % 360;
+    this.applyCurrentRotation();
   }
 
-  /**
-   * Rotate in 45° increments (step = +1 for CW, -1 for CCW)
-   */
-  rotateStep(step) {
-    this.currentHeadingIndex = (this.currentHeadingIndex + step + 8) % 8;
-    this.apply8WayRotation(this.currentHeadingIndex);
+  rotateStep(deltaDeg) {
+    this.currentAngleDegrees = ((this.currentAngleDegrees + deltaDeg) % 360 + 360) % 360;
+    this.applyCurrentRotation();
   }
 
-  apply8WayRotation(idx) {
-    // Switch to orbit mode if in walk mode
+  applyCurrentRotation() {
     if (this.currentMode === 'walk') {
       this.setView('overview');
     }
 
-    const directions = ['S', 'SW', 'W', 'NW', 'N', 'NE', 'E', 'SE'];
-    const dirKey = directions[idx];
-    this.updateCompassActive(dirKey);
+    const deg = this.currentAngleDegrees;
+    this.updateCompassActive(deg);
 
-    // Angle in radians (0 is South looking North, +PI/4 is SW, etc.)
-    const angleRad = idx * (Math.PI / 4);
+    const rad = deg * (Math.PI / 180);
+    const elevRad = this.elevationAngle * (Math.PI / 180);
 
-    const distRadius = 34.0; // Distance from center
-    const cameraHeight = 19.5; // Elevated angle so floor and walls are clearly visible together
-    const lookAtTarget = new THREE.Vector3(0, 3.5, 0);
+    const totalDist = 38.0;
+    const groundDist = totalDist * Math.cos(elevRad);
+    const cameraHeight = Math.max(4.0, totalDist * Math.sin(elevRad));
 
-    const camX = Math.sin(angleRad) * -distRadius;
-    const camZ = Math.cos(angleRad) * distRadius;
+    const camX = Math.sin(rad) * -groundDist;
+    const camZ = Math.cos(rad) * groundDist;
 
     const targetCameraPos = new THREE.Vector3(camX, cameraHeight, camZ);
+    const lookAtTarget = new THREE.Vector3(0, 3.5, 0);
+
     this.animateCameraTo(targetCameraPos, lookAtTarget, 650);
   }
 
@@ -280,7 +329,7 @@ export class SceneManager {
     }
   }
 
-  animateCameraTo(targetPos, targetLookAt, duration = 700) {
+  animateCameraTo(targetPos, targetLookAt, duration = 650) {
     this.isAnimatingCamera = true;
     this.animStartTime = performance.now();
     this.animDuration = duration;
@@ -313,7 +362,7 @@ export class SceneManager {
 
     switch (preset) {
       case 'overview':
-        this.rotateToDirection('S');
+        this.rotateToHeadingDegrees(0);
         break;
 
       case 'topdown':
