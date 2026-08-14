@@ -34,7 +34,7 @@ export class WallTextureSection {
     this.texture.generateMipmaps = true;
 
     // State properties
-    this.baseColor = options.baseColor || '#5c6448'; // Clean olive/khaki or grey
+    this.baseColor = options.baseColor || '#717882'; // Default clean architectural grey
     this.image = null;
     this.imageDataUrl = null;
     this.imageTransform = {
@@ -44,7 +44,7 @@ export class WallTextureSection {
       offsetY: 0,
       rotation: 0,
       opacity: 1.0,
-      frameColor: '#1e293b',
+      frameColor: '#18191d',
       frameWidth: 0
     };
 
@@ -85,7 +85,7 @@ export class WallTextureSection {
     ctx.fillStyle = this.baseColor;
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle wall texture gradient for realism
+    // Subtle wall gradient for natural light bounce
     const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
     grad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
@@ -93,7 +93,7 @@ export class WallTextureSection {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    // 2. Custom Image Layer (only if user uploaded an image)
+    // 2. Custom Image Layer (if user uploaded an image)
     if (this.image && (this.image.complete || this.image.width > 0)) {
       ctx.save();
       ctx.globalAlpha = this.imageTransform.opacity;
@@ -326,26 +326,29 @@ export class WallTextureSection {
 }
 
 /**
- * Manager handling all clean architectural wall sections
+ * Manager handling all architectural wall sections
+ * Default theme: All interior walls grey, centerpiece black, outer walls black.
  */
 export class WallTextureManager {
   constructor(onUpdateCallback) {
     this.onUpdate = onUpdateCallback || (() => {});
     
-    // Clean wall sections with no dark portion rectangles
+    const INTERIOR_GREY = '#717882';
+    const CENTER_BLACK = '#18191d';
+
     this.sections = {
-      1: new WallTextureSection(1, 'North Wall', 15, 9, { baseColor: '#5c6448' }),
-      2: new WallTextureSection(2, 'Upper West Wall', 12, 9, { baseColor: '#5c6448' }),
-      3: new WallTextureSection(3, 'Lower West Wall', 12, 9, { baseColor: '#7a818c' }),
-      4: new WallTextureSection(4, 'South Wall (Left Grey)', 10, 9, { baseColor: '#7a818c' }),
-      5: new WallTextureSection(5, 'South Wall (Right Olive)', 12, 9, { baseColor: '#5c6448' }),
-      6: new WallTextureSection(6, 'East Wall (Mid Section)', 10, 9, { baseColor: '#5c6448' }),
-      7: new WallTextureSection(7, 'East Wall (Lower / Booth)', 10, 9, { baseColor: '#5c6448' }),
-      8: new WallTextureSection(8, 'Center Island Column', 18, 9, { baseColor: '#475569' }),
-      9: new WallTextureSection(9, 'North Partition Fin', 8, 9, { baseColor: '#ffffff' }),
-      10: new WallTextureSection(10, 'West Partition Fin', 8, 9, { baseColor: '#ffffff' }),
-      11: new WallTextureSection(11, 'East Partition Fin', 8, 9, { baseColor: '#ffffff' }),
-      12: new WallTextureSection(12, 'South Entrance Vestibule', 8, 9, { baseColor: '#ffffff' })
+      1: new WallTextureSection(1, 'North Wall', 15, 9, { baseColor: INTERIOR_GREY }),
+      2: new WallTextureSection(2, 'Upper West Wall', 12, 9, { baseColor: INTERIOR_GREY }),
+      3: new WallTextureSection(3, 'Lower West Wall', 12, 9, { baseColor: INTERIOR_GREY }),
+      4: new WallTextureSection(4, 'South Wall (Left)', 10, 9, { baseColor: INTERIOR_GREY }),
+      5: new WallTextureSection(5, 'South Wall (Right)', 12, 9, { baseColor: INTERIOR_GREY }),
+      6: new WallTextureSection(6, 'East Wall (Mid Section)', 10, 9, { baseColor: INTERIOR_GREY }),
+      7: new WallTextureSection(7, 'East Wall (Lower / Booth)', 10, 9, { baseColor: INTERIOR_GREY }),
+      8: new WallTextureSection(8, 'Centerpiece Island Column', 18, 9, { baseColor: CENTER_BLACK }),
+      9: new WallTextureSection(9, 'North Partition Fin', 8, 9, { baseColor: INTERIOR_GREY }),
+      10: new WallTextureSection(10, 'West Partition Fin', 8, 9, { baseColor: INTERIOR_GREY }),
+      11: new WallTextureSection(11, 'East Partition Fin', 8, 9, { baseColor: INTERIOR_GREY }),
+      12: new WallTextureSection(12, 'South Entrance Vestibule', 8, 9, { baseColor: INTERIOR_GREY })
     };
 
     this.activeSectionId = 1;
