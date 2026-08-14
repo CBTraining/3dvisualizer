@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 /**
- * Manages dynamic high-res canvas textures for each distinct architectural wall/panel section.
+ * Manages dynamic high-res canvas textures for clean architectural wall/panel surfaces.
  */
 export class WallTextureSection {
   constructor(id, name, widthFt = 15, heightFt = 9, options = {}) {
@@ -34,9 +34,7 @@ export class WallTextureSection {
     this.texture.generateMipmaps = true;
 
     // State properties
-    this.baseColor = options.baseColor || '#555e42'; // Default olive/khaki or grey
-    this.hasScreen = options.hasScreen || false;
-    this.screenTexture = null;
+    this.baseColor = options.baseColor || '#5c6448'; // Clean olive/khaki or grey
     this.image = null;
     this.imageDataUrl = null;
     this.imageTransform = {
@@ -83,11 +81,11 @@ export class WallTextureSection {
     const w = this.canvasWidth;
     const h = this.canvasHeight;
 
-    // 1. Base Paint Color
+    // 1. Clean Base Paint Color
     ctx.fillStyle = this.baseColor;
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle wall texture gradient
+    // Subtle wall texture gradient for realism
     const grad = ctx.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
     grad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
@@ -95,12 +93,7 @@ export class WallTextureSection {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    // 2. Default Mounted Display Screen (if configured and no custom full-image)
-    if (this.hasScreen && !this.image) {
-      this.drawDefaultScreen(ctx, w, h);
-    }
-
-    // 3. Custom Image Layer
+    // 2. Custom Image Layer (only if user uploaded an image)
     if (this.image && (this.image.complete || this.image.width > 0)) {
       ctx.save();
       ctx.globalAlpha = this.imageTransform.opacity;
@@ -170,39 +163,10 @@ export class WallTextureSection {
       ctx.restore();
     }
 
-    // 4. Drawing Layer
+    // 3. Drawing Layer
     ctx.drawImage(this.drawingCanvas, 0, 0);
 
-    // Subtle dimension border
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(10, 10, w - 20, h - 20);
-    ctx.restore();
-
     this.texture.needsUpdate = true;
-  }
-
-  drawDefaultScreen(ctx, w, h) {
-    const sw = w * 0.6;
-    const sh = h * 0.45;
-    const sx = (w - sw) / 2;
-    const sy = (h - sh) / 2 - 20;
-
-    // Bezel
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(sx - 10, sy - 10, sw + 20, sh + 20);
-
-    // Screen Panel
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(sx, sy, sw, sh);
-
-    // Screen subtle graphic
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-    ctx.font = 'bold 36px "Inter", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('DISPLAY PANEL', w / 2, sy + sh / 2);
   }
 
   clearDrawing() {
@@ -322,7 +286,6 @@ export class WallTextureSection {
       widthFt: this.widthFt,
       heightFt: this.heightFt,
       baseColor: this.baseColor,
-      hasScreen: this.hasScreen,
       imageDataUrl: this.imageDataUrl,
       imageTransform: { ...this.imageTransform },
       strokes: this.strokes
@@ -332,7 +295,6 @@ export class WallTextureSection {
   async deserialize(data) {
     if (!data) return;
     this.baseColor = data.baseColor || this.baseColor;
-    this.hasScreen = data.hasScreen !== undefined ? data.hasScreen : this.hasScreen;
     if (data.imageTransform) {
       this.imageTransform = { ...this.imageTransform, ...data.imageTransform };
     }
@@ -364,26 +326,26 @@ export class WallTextureSection {
 }
 
 /**
- * Manager handling all architectural wall sections from the reference floorplan
+ * Manager handling all clean architectural wall sections
  */
 export class WallTextureManager {
   constructor(onUpdateCallback) {
     this.onUpdate = onUpdateCallback || (() => {});
     
-    // Wall sections configured matching the reference floorplan colors and layout
+    // Clean wall sections with no dark portion rectangles
     this.sections = {
-      1: new WallTextureSection(1, 'North Wall (Right Screen)', 15, 9, { baseColor: '#5c6448', hasScreen: true }),
-      2: new WallTextureSection(2, 'Upper West Wall (Screen)', 12, 9, { baseColor: '#5c6448', hasScreen: true }),
-      3: new WallTextureSection(3, 'Lower West Wall (Screen)', 12, 9, { baseColor: '#7a818c', hasScreen: true }),
-      4: new WallTextureSection(4, 'South Wall (Left Grey)', 10, 9, { baseColor: '#7a818c', hasScreen: false }),
-      5: new WallTextureSection(5, 'South Wall (Right Screen)', 12, 9, { baseColor: '#5c6448', hasScreen: true }),
-      6: new WallTextureSection(6, 'East Wall (Mid Section)', 10, 9, { baseColor: '#5c6448', hasScreen: false }),
-      7: new WallTextureSection(7, 'East Wall (Lower / Booth)', 10, 9, { baseColor: '#5c6448', hasScreen: false }),
-      8: new WallTextureSection(8, 'Center Island Column', 18, 9, { baseColor: '#475569', hasScreen: false }),
-      9: new WallTextureSection(9, 'North Partition Fin', 8, 9, { baseColor: '#ffffff', hasScreen: false }),
-      10: new WallTextureSection(10, 'West Partition Fin', 8, 9, { baseColor: '#ffffff', hasScreen: false }),
-      11: new WallTextureSection(11, 'East Partition Fin', 8, 9, { baseColor: '#ffffff', hasScreen: false }),
-      12: new WallTextureSection(12, 'South Entrance Vestibule', 8, 9, { baseColor: '#ffffff', hasScreen: false })
+      1: new WallTextureSection(1, 'North Wall', 15, 9, { baseColor: '#5c6448' }),
+      2: new WallTextureSection(2, 'Upper West Wall', 12, 9, { baseColor: '#5c6448' }),
+      3: new WallTextureSection(3, 'Lower West Wall', 12, 9, { baseColor: '#7a818c' }),
+      4: new WallTextureSection(4, 'South Wall (Left Grey)', 10, 9, { baseColor: '#7a818c' }),
+      5: new WallTextureSection(5, 'South Wall (Right Olive)', 12, 9, { baseColor: '#5c6448' }),
+      6: new WallTextureSection(6, 'East Wall (Mid Section)', 10, 9, { baseColor: '#5c6448' }),
+      7: new WallTextureSection(7, 'East Wall (Lower / Booth)', 10, 9, { baseColor: '#5c6448' }),
+      8: new WallTextureSection(8, 'Center Island Column', 18, 9, { baseColor: '#475569' }),
+      9: new WallTextureSection(9, 'North Partition Fin', 8, 9, { baseColor: '#ffffff' }),
+      10: new WallTextureSection(10, 'West Partition Fin', 8, 9, { baseColor: '#ffffff' }),
+      11: new WallTextureSection(11, 'East Partition Fin', 8, 9, { baseColor: '#ffffff' }),
+      12: new WallTextureSection(12, 'South Entrance Vestibule', 8, 9, { baseColor: '#ffffff' })
     };
 
     this.activeSectionId = 1;

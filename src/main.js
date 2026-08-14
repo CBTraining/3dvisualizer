@@ -29,7 +29,6 @@ class App {
       viewportContainer,
       this.textureManager,
       (selectedSectionId) => {
-        // Wall clicked in 3D scene
         this.selectWallSection(selectedSectionId);
       }
     );
@@ -74,7 +73,7 @@ class App {
     // 6. Setup Drawer Collapse / Expand
     this.setupDrawer();
 
-    // 7. Load from Cache or Seed with Demo Content
+    // 7. Load from Cache or Clean Project
     await this.loadInitialState();
 
     this.updateBadge();
@@ -92,7 +91,6 @@ class App {
       drawerBar.classList.toggle('collapsed', isCollapsed);
       drawerIcon.style.transform = isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
       
-      // Delay resize to allow CSS transition
       setTimeout(() => {
         if (this.drawingCanvas) this.drawingCanvas.resizeCanvas();
       }, 300);
@@ -110,7 +108,7 @@ class App {
     const badge = document.getElementById('activeSectionBadge');
     const active = this.textureManager.getActiveSection();
     if (badge && active) {
-      badge.textContent = `Active: ${active.name} • 15 ft`;
+      badge.textContent = `Active: ${active.name}`;
     }
   }
 
@@ -130,7 +128,6 @@ class App {
     try {
       const cached = await storage.loadProject();
       if (cached && cached.walls) {
-        console.log('Restoring room from cache...');
         if (cached.dimensions) {
           this.roomBuilder.setDimensions(cached.dimensions);
         }
@@ -139,18 +136,10 @@ class App {
         this.wallEditor.updateForActiveSection();
         this.drawingCanvas.refreshView();
       } else {
-        // Seed Wall 1 with nice default artwork
-        console.log('Starting fresh project with demo presets...');
-        this.wallEditor.loadSampleGraphic('geometric');
-        
-        // Seed Wall 3 with a blueprint sample
-        setTimeout(() => {
-          this.textureManager.setActiveSection(3);
-          this.wallEditor.loadSampleGraphic('architectural');
-          this.textureManager.setActiveSection(1);
-          this.wallEditor.updateForActiveSection();
-          this.drawingCanvas.refreshView();
-        }, 100);
+        // Clean initial state with clean walls
+        this.roomBuilder.updateTextures();
+        this.wallEditor.updateForActiveSection();
+        this.drawingCanvas.refreshView();
       }
     } catch (e) {
       console.warn('Error loading initial state:', e);
