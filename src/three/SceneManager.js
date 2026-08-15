@@ -335,16 +335,18 @@ export class SceneManager {
     this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     this.raycaster.setFromCamera(this.mouse, this.camera);
-    const wallMeshes = Object.values(this.roomBuilder.wallMeshes);
-    const intersects = this.raycaster.intersectObjects(wallMeshes, true);
+    const intersects = this.raycaster.intersectObjects(this.roomBuilder.roomGroup.children, true);
 
     if (intersects.length > 0) {
-      let obj = intersects[0].object;
-      while (obj && !obj.userData.sectionId && obj.parent) {
-        obj = obj.parent;
-      }
-      if (obj && obj.userData.sectionId) {
-        this.onWallSelect(obj.userData.sectionId);
+      for (const hit of intersects) {
+        let obj = hit.object;
+        while (obj && !obj.userData.sectionId && obj.parent && obj.parent !== this.roomBuilder.roomGroup) {
+          obj = obj.parent;
+        }
+        if (obj && obj.userData.sectionId) {
+          this.onWallSelect(obj.userData.sectionId);
+          break;
+        }
       }
     }
   }
