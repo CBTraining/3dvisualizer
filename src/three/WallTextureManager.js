@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 /**
  * Manages 2D high-resolution canvas textures for each architectural room section.
- * Each room quadrant gets its own continuous corner wall surface (straight + curve + straight).
+ * Supports scale, offset, rotation, opacity, fit modes, and horizontal/vertical flip.
  */
 export class WallTextureSection {
   constructor(id, name, widthFt, heightFt, isCenterpiece = false) {
@@ -12,13 +12,12 @@ export class WallTextureSection {
     this.heightFt = heightFt;
     this.isCenterpiece = isCenterpiece;
 
-    // Physical texture aspect ratio
     const aspect = this.widthFt / this.heightFt;
     this.canvasWidth = 2048;
     this.canvasHeight = Math.max(512, Math.round(2048 / aspect));
 
-    // Base color: Solid Black for centerpiece, Architectural Grey for interior room walls
-    this.baseColor = isCenterpiece ? '#18191d' : '#717882';
+    // Default base color: Architectural Grey (#717882) for ALL interior surfaces
+    this.baseColor = '#717882';
 
     this.image = null;
     this.imageDataUrl = null;
@@ -29,6 +28,8 @@ export class WallTextureSection {
       rotation: 0,
       opacity: 1.0,
       fitMode: 'fill', // 'fit', 'fill', 'stretch', 'tile'
+      flipX: false,
+      flipY: false,
       frameWidth: 0
     };
 
@@ -133,8 +134,6 @@ export class WallTextureSection {
         drawY = (H - drawH) / 2 + this.imageTransform.offsetY * H;
       } else if (fitMode === 'tile') {
         const tileScale = this.imageTransform.scale * 0.4;
-        const tw = imgW * tileScale;
-        const th = imgH * tileScale;
         const pattern = ctx.createPattern(this.image, 'repeat');
         ctx.fillStyle = pattern;
         ctx.fillRect(0, 0, W, H);
@@ -149,11 +148,15 @@ export class WallTextureSection {
 
       if (fitMode !== 'tile') {
         ctx.translate(drawX + drawW / 2, drawY + drawH / 2);
+        
+        // Flip Horizontal / Vertical
+        ctx.scale(this.imageTransform.flipX ? -1 : 1, this.imageTransform.flipY ? -1 : 1);
+
         if (this.imageTransform.rotation !== 0) {
           ctx.rotate((this.imageTransform.rotation * Math.PI) / 180);
         }
 
-        // Frame Border
+        // Picture Frame Border
         if (this.imageTransform.frameWidth > 0) {
           const fw = this.imageTransform.frameWidth;
           ctx.fillStyle = '#ffffff';
@@ -291,16 +294,6 @@ export class WallTextureManager {
   constructor(onTextureUpdate) {
     this.onTextureUpdate = onTextureUpdate || (() => {});
 
-    // 4 Main Quadrant Room Corner Wall Surfaces + Centerpiece & Fins:
-    // 1. NW Room Wall (24.25ft continuous straight+corner+straight)
-    // 2. NE Room Wall (14.20ft continuous straight+curve)
-    // 3. SW Room Wall (22.25ft continuous straight+corner+straight)
-    // 4. SE Room / East Wall (18.00ft continuous)
-    // 5. Centerpiece Island Column (18.00ft)
-    // 6. North Partition Fin (7.30ft)
-    // 7. West Partition Fin (7.30ft)
-    // 8. East Partition Fin (9.00ft)
-    // 9. South Entrance Vestibule (6.30ft)
     this.sections = {
       1: new WallTextureSection(1, 'North-West Room Wall (Corner 1)', 24.25, 9.0),
       2: new WallTextureSection(2, 'North-East Room Wall (Corner 2)', 14.20, 9.0),

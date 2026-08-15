@@ -2,10 +2,9 @@ import * as THREE from 'three';
 
 /**
  * Architectural Room Builder:
- * - ALL interior faces (all 4 quadrant room corner walls, centerpiece cylinder sides, 
- *   partition fins, booth inner faces, and entrance vestibule) are textured with dynamic 
- *   canvases allowing images, paint colors, and sketching.
- * - ALL exterior perimeter faces and top caps are solid black.
+ * - ALL interior wall faces (all 4 quadrant room corner walls, centerpiece sides, partition fins, 
+ *   vestibule, and booth) are textured and mapped to high-res canvases with correct UV orientation.
+ * - ALL exterior faces and top caps are solid black.
  */
 export class RoomBuilder {
   constructor(scene, wallTextureManager) {
@@ -413,7 +412,7 @@ export class RoomBuilder {
     seGroup.add(southMesh);
     this.wallMeshes[4] = southMesh;
 
-    // 2. Mid-East Wall (z: -3.5 to +2.5, x = +13.5)
+    // 2. Mid-East Wall
     const midEastGeo = new THREE.BoxGeometry(T, H, 6.0);
     const midEastMesh = new THREE.Mesh(midEastGeo, [
       this.outerBlackMaterial, // +x Exterior
@@ -428,7 +427,7 @@ export class RoomBuilder {
     midEastMesh.userData = { sectionId: 4, name: 'South-East Room & Entry Wall' };
     seGroup.add(midEastMesh);
 
-    // 3. Lower-East Wall (z: +6.0 to +13.5, x = +13.5)
+    // 3. Lower-East Wall
     const lowerEastGeo = new THREE.BoxGeometry(T, H, 7.5);
     const lowerEastMesh = new THREE.Mesh(lowerEastGeo, [
       this.outerBlackMaterial, // +x Exterior
@@ -481,7 +480,7 @@ export class RoomBuilder {
 
   /**
    * Centerpiece Island Column (Section 5):
-   * Material 0 is front/back caps (top cap is black), Material 1 is sides (textured with image/grey/paint)
+   * Built with parametric buffer geometry for 100% clean texture mapping on all 4 rounded sides
    */
   buildCenterpiece(H) {
     const islandGroup = new THREE.Group();
@@ -502,7 +501,48 @@ export class RoomBuilder {
     shape.lineTo(-size / 2, half);
     shape.absarc(-half, half, r, Math.PI, Math.PI / 2, true);
 
-    const geom = new THREE.ExtrudeGeometry(shape, { depth: H, bevelEnabled: false });
+    const shapePoints = shape.getPoints(64);
+    const N = shapePoints.length;
+
+    // Calculate cumulative perimeter distance
+    const cumDist = [0];
+    let totalPerim = 0;
+    for (let i = 1; i < N; i++) {
+      totalPerim += shapePoints[i].distanceTo(shapePoints[i - 1]);
+      cumDist.push(totalPerim);
+    }
+
+    // 1. Centerpiece Side Walls (Textured with Section 5 texture)
+    const sidesGeo = new THREE.BufferGeometry();
+    const verts = [];
+    const uvs = [];
+    const norms = [];
+
+    for (let i = 0; i < N; i++) {
+      const p = shapePoints[i];
+      const u = cumDist[i] / totalPerim;
+
+      verts.push(p.x, 0, p.y);
+      norms.push(p.x, 0, p.y);
+      uvs.push(u, 0);
+
+      verts.push(p.x, H, p.y);
+      norms.push(p.x, 0, p.y);
+      uvs.push(u, 1);
+    }
+
+    const indices = [];
+    for (let i = 0; i < N - 1; i++) {
+      const b0 = i * 2, t0 = i * 2 + 1, b1 = (i + 1) * 2, t1 = (i + 1) * 2 + 1;
+      indices.push(b0, b1, t0);
+      indices.push(b1, t1, t0);
+    }
+
+    sidesGeo.setIndex(indices);
+    sidesGeo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    sidesGeo.setAttribute('normal', new THREE.Float32BufferAttribute(norms, 3));
+    sidesGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    sidesGeo.computeVertexNormals();
 
     const centerSidesMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(5).texture,
@@ -514,21 +554,21 @@ export class RoomBuilder {
     });
     this.interiorMaterials.push(centerSidesMat);
 
-    // In ExtrudeGeometry, material[0] = caps (top), material[1] = side cylinder walls!
-    const islandMesh = new THREE.Mesh(geom, [
-      this.doubleBlackMaterial, // Material 0: Top Cap (Black)
-      centerSidesMat            // Material 1: Sides (Textured / Grey / Art)
-    ]);
-    islandMesh.rotation.x = Math.PI / 2;
-    islandMesh.position.y = H;
-    islandMesh.receiveShadow = true;
-    islandMesh.castShadow = true;
-    islandMesh.userData = { sectionId: 5, name: 'Centerpiece Island Column' };
-    islandGroup.add(islandMesh);
-    this.wallMeshes[5] = islandMesh;
+    const sidesMesh = new THREE.Mesh(sidesGeo, centerSidesMat);
+    sidesMesh.castShadow = true;
+    sidesMesh.receiveShadow = true;
+    sidesMesh.userData = { sectionId: 5, name: 'Centerpiece Island Column' };
+    islandGroup.add(sidesMesh);
+    this.wallMeshes[5] = sidesMesh;
 
-    // Clean top rim outline
-    const shapePoints = shape.getPoints(64);
+    // 2. Top Cap (Black)
+    const topShapeGeo = new THREE.ShapeGeometry(shape);
+    const topCapMesh = new THREE.Mesh(topShapeGeo, this.doubleBlackMaterial);
+    topCapMesh.rotation.x = -Math.PI / 2;
+    topCapMesh.position.y = H;
+    islandGroup.add(topCapMesh);
+
+    // 3. Top Rim Contour Line
     const rimPoints = shapePoints.map((p) => new THREE.Vector3(p.x, H + 0.04, p.y));
     rimPoints.push(rimPoints[0].clone());
     const topRimGeo = new THREE.BufferGeometry().setFromPoints(rimPoints);
@@ -719,7 +759,7 @@ export class RoomBuilder {
         const isSelected = parseInt(id, 10) === parseInt(sectionId, 10);
         if (Array.isArray(mesh.material)) {
           mesh.material.forEach((mat) => {
-            if (mat.emissive) {
+            if (mat && mat.emissive) {
               mat.emissive.set(isSelected ? 0x223a5e : 0x000000);
             }
           });

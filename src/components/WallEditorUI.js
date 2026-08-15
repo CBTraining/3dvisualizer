@@ -161,7 +161,7 @@ export class WallEditorUI {
                 </div>
               </div>
 
-              <!-- Rotation & Opacity -->
+              <!-- Rotation, Flip & Opacity -->
               <div class="control-grid-2">
                 <div class="control-field">
                   <div class="field-label-row">
@@ -176,6 +176,21 @@ export class WallEditorUI {
                     <span class="field-val" id="opacityVal">100%</span>
                   </div>
                   <input type="range" id="opacitySlider" min="10" max="100" value="100" class="slider" />
+                </div>
+              </div>
+
+              <!-- Mirror / Flip Orientation -->
+              <div class="control-field">
+                <label>Image Orientation</label>
+                <div class="segmented-control" id="flipGroup">
+                  <button class="seg-btn" id="btnFlipH" title="Flip Image Horizontally (Mirror X)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/><path d="M12 22v-6"/></svg>
+                    <span>Flip Left/Right</span>
+                  </button>
+                  <button class="seg-btn" id="btnFlipV" title="Flip Image Vertically (Invert Y)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="m17 7-5-5-5 5"/></svg>
+                    <span>Flip Up/Down</span>
+                  </button>
                 </div>
               </div>
 
@@ -374,6 +389,27 @@ export class WallEditorUI {
       }
     });
 
+    // Flip Horizontal & Vertical
+    const btnFlipH = root.querySelector('#btnFlipH');
+    btnFlipH.addEventListener('click', () => {
+      const active = this.textureManager.getActiveSection();
+      if (active) {
+        active.setImageTransform({ flipX: !active.imageTransform.flipX });
+        btnFlipH.classList.toggle('active', active.imageTransform.flipX);
+        this.onStateChange();
+      }
+    });
+
+    const btnFlipV = root.querySelector('#btnFlipV');
+    btnFlipV.addEventListener('click', () => {
+      const active = this.textureManager.getActiveSection();
+      if (active) {
+        active.setImageTransform({ flipY: !active.imageTransform.flipY });
+        btnFlipV.classList.toggle('active', active.imageTransform.flipY);
+        this.onStateChange();
+      }
+    });
+
     // Opacity
     const opacitySlider = root.querySelector('#opacitySlider');
     const opacityVal = root.querySelector('#opacityVal');
@@ -480,6 +516,12 @@ export class WallEditorUI {
       root.querySelectorAll('#fitModeGroup .seg-btn').forEach((btn) => {
         btn.classList.toggle('active', btn.dataset.fit === t.fitMode);
       });
+
+      const btnFlipH = root.querySelector('#btnFlipH');
+      if (btnFlipH) btnFlipH.classList.toggle('active', !!t.flipX);
+
+      const btnFlipV = root.querySelector('#btnFlipV');
+      if (btnFlipV) btnFlipV.classList.toggle('active', !!t.flipY);
     }
 
     root.querySelector('#wallColorPicker').value = active.baseColor;
