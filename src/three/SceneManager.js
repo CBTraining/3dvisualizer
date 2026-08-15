@@ -389,31 +389,23 @@ export class SceneManager {
         this.animateCameraTo(new THREE.Vector3(0, 48, 0.01), new THREE.Vector3(0, 0, 0));
         break;
 
-      case 'wall-1':
-        this.animateCameraTo(new THREE.Vector3(0, H / 2, -2), new THREE.Vector3(0, H / 2, -13.5));
+      case 'wall-1': // NW Room Corner Wall
+        this.animateCameraTo(new THREE.Vector3(-4, 5.2, -4), new THREE.Vector3(-12, 4.5, -12));
         break;
 
-      case 'wall-2':
-        this.animateCameraTo(new THREE.Vector3(-2, H / 2, -4.75), new THREE.Vector3(-13.5, H / 2, -4.75));
+      case 'wall-2': // NE Room Corner Wall
+        this.animateCameraTo(new THREE.Vector3(4, 5.2, -4), new THREE.Vector3(12, 4.5, -12));
         break;
 
-      case 'wall-3':
-        this.animateCameraTo(new THREE.Vector3(-2, H / 2, 4.75), new THREE.Vector3(-13.5, H / 2, 4.75));
+      case 'wall-3': // SW Room Corner Wall
+        this.animateCameraTo(new THREE.Vector3(-4, 5.2, 4), new THREE.Vector3(-12, 4.5, 12));
         break;
 
-      case 'wall-4':
-        this.animateCameraTo(new THREE.Vector3(1.75, H / 2, 4), new THREE.Vector3(1.75, H / 2, 13.5));
+      case 'wall-4': // SE Room Wall
+        this.animateCameraTo(new THREE.Vector3(4, 5.2, 4), new THREE.Vector3(12, 4.5, 12));
         break;
 
-      case 'wall-5':
-        this.animateCameraTo(new THREE.Vector3(2, H / 2, -0.5), new THREE.Vector3(13.5, H / 2, -0.5));
-        break;
-
-      case 'wall-6':
-        this.animateCameraTo(new THREE.Vector3(4, H / 2, 9.75), new THREE.Vector3(13.5, H / 2, 9.75));
-        break;
-
-      case 'wall-7':
+      case 'wall-5': // Centerpiece Island
         this.animateCameraTo(new THREE.Vector3(0, 6, 9), new THREE.Vector3(0, 4.5, 0));
         break;
 

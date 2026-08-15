@@ -1,5 +1,5 @@
 /**
- * Wall Editor UI with categorized section selector matching the consolidated room sections
+ * Wall Editor UI with categorized section selector matching the 4 continuous quadrant room corner walls
  */
 export class WallEditorUI {
   constructor(container, textureManager, roomBuilder, sceneManager, onStateChange) {
@@ -19,57 +19,49 @@ export class WallEditorUI {
         <div class="section-tabs-header">
           <div class="section-tabs-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-            <span>ARCHITECTURAL SECTIONS & WALLS</span>
+            <span>ROOM CORNER SURFACES & WALLS</span>
           </div>
 
           <div class="wall-category-group">
-            <label class="cat-label">Perimeter Walls</label>
+            <label class="cat-label">Quadrant Room Corner Walls</label>
             <div class="wall-tabs-grid">
-              <button class="wall-tab-btn active" data-section="1" title="North Wall (19ft × 9ft)">
-                <span class="tab-num">N</span>
-                <span class="tab-label">North</span>
+              <button class="wall-tab-btn active" data-section="1" title="North-West Room Corner Wall (24.3ft continuous)">
+                <span class="tab-num">NW</span>
+                <span class="tab-label">NW Room</span>
               </button>
-              <button class="wall-tab-btn" data-section="2" title="Upper West Wall (9.5ft × 9ft)">
-                <span class="tab-num">W1</span>
-                <span class="tab-label">Upper W</span>
+              <button class="wall-tab-btn" data-section="2" title="North-East Room Corner Wall (14.2ft continuous)">
+                <span class="tab-num">NE</span>
+                <span class="tab-label">NE Room</span>
               </button>
-              <button class="wall-tab-btn" data-section="3" title="Lower West Wall (9.5ft × 9ft)">
-                <span class="tab-num">W2</span>
-                <span class="tab-label">Lower W</span>
+              <button class="wall-tab-btn" data-section="3" title="South-West Room Corner Wall (22.3ft continuous)">
+                <span class="tab-num">SW</span>
+                <span class="tab-label">SW Room</span>
               </button>
-              <button class="wall-tab-btn" data-section="4" title="South Wall (22.5ft × 9ft)">
-                <span class="tab-num">S</span>
-                <span class="tab-label">South</span>
-              </button>
-              <button class="wall-tab-btn" data-section="5" title="East Wall Mid (6ft × 9ft)">
-                <span class="tab-num">E1</span>
-                <span class="tab-label">Mid East</span>
-              </button>
-              <button class="wall-tab-btn" data-section="6" title="East Wall Lower / Booth (7ft × 9ft)">
-                <span class="tab-num">E2</span>
-                <span class="tab-label">SE Booth</span>
+              <button class="wall-tab-btn" data-section="4" title="South-East Room & Entry Wall (18.0ft)">
+                <span class="tab-num">SE</span>
+                <span class="tab-label">SE Room</span>
               </button>
             </div>
 
-            <label class="cat-label" style="margin-top: 8px;">Island, Fins & Vestibule</label>
+            <label class="cat-label" style="margin-top: 8px;">Centerpiece Island & Partition Fins</label>
             <div class="wall-tabs-grid-sub">
-              <button class="wall-tab-btn" data-section="7" title="Centerpiece Island Column">
+              <button class="wall-tab-btn" data-section="5" title="Centerpiece Island Column">
                 <span class="tab-num">CTR</span>
                 <span class="tab-label">Centerpiece</span>
               </button>
-              <button class="wall-tab-btn" data-section="8" title="North Partition Fin">
+              <button class="wall-tab-btn" data-section="6" title="North Partition Fin">
                 <span class="tab-num">F-N</span>
                 <span class="tab-label">North Fin</span>
               </button>
-              <button class="wall-tab-btn" data-section="9" title="West Partition Fin">
+              <button class="wall-tab-btn" data-section="7" title="West Partition Fin">
                 <span class="tab-num">F-W</span>
                 <span class="tab-label">West Fin</span>
               </button>
-              <button class="wall-tab-btn" data-section="10" title="East Partition Fin">
+              <button class="wall-tab-btn" data-section="8" title="East Partition Fin">
                 <span class="tab-num">F-E</span>
                 <span class="tab-label">East Fin</span>
               </button>
-              <button class="wall-tab-btn" data-section="11" title="South Entrance Vestibule">
+              <button class="wall-tab-btn" data-section="9" title="South Entrance Vestibule">
                 <span class="tab-num">VEST</span>
                 <span class="tab-label">Vestibule</span>
               </button>
@@ -81,12 +73,12 @@ export class WallEditorUI {
           <!-- Active Wall Meta & Camera Snap -->
           <div class="wall-meta-bar">
             <div class="active-wall-info">
-              <h3 id="activeWallTitle">North Wall</h3>
-              <p class="wall-subtext" id="activeWallSubtext">Dimensions: 19.0 ft × 9.0 ft</p>
+              <h3 id="activeWallTitle">North-West Room Wall (Corner 1)</h3>
+              <p class="wall-subtext" id="activeWallSubtext">Dimensions: 24.3 ft × 9.0 ft (Continuous Curved Corner)</p>
             </div>
-            <button class="btn-snap-view" id="btnSnapWall" title="Align camera directly in front of this section">
+            <button class="btn-snap-view" id="btnSnapWall" title="Align camera directly facing this room corner">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m10 15 5-3-5-3v6Z"/></svg>
-              <span>Face Section</span>
+              <span>Face Room</span>
             </button>
           </div>
 
@@ -116,7 +108,7 @@ export class WallEditorUI {
                 </div>
                 <div class="dropzone-text">
                   <span class="primary-text">Click to upload or drag image here</span>
-                  <span class="secondary-text">PNG, JPG, WebP (high-res supported)</span>
+                  <span class="secondary-text">PNG, JPG, WebP (wraps continuously around corner)</span>
                 </div>
               </div>
             </div>
@@ -124,7 +116,7 @@ export class WallEditorUI {
             <!-- Image Settings -->
             <div class="image-controls-group" id="imageControlsGroup" style="display: none;">
               <div class="control-row-header">
-                <span class="section-badge">Image Transform</span>
+                <span class="section-badge">Corner Transform</span>
                 <button class="btn-clear-link" id="btnClearImage">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   <span>Remove Image</span>
@@ -135,8 +127,8 @@ export class WallEditorUI {
               <div class="control-field">
                 <label>Placement Mode</label>
                 <div class="segmented-control" id="fitModeGroup">
-                  <button class="seg-btn active" data-fit="fit">Fit</button>
-                  <button class="seg-btn" data-fit="fill">Fill Wall</button>
+                  <button class="seg-btn active" data-fit="fill">Fill Corner Wall</button>
+                  <button class="seg-btn" data-fit="fit">Fit</button>
                   <button class="seg-btn" data-fit="stretch">Stretch</button>
                   <button class="seg-btn" data-fit="tile">Tile</button>
                 </div>
@@ -155,7 +147,7 @@ export class WallEditorUI {
               <div class="control-grid-2">
                 <div class="control-field">
                   <div class="field-label-row">
-                    <label>Position X</label>
+                    <label>Position X (Along Corner)</label>
                     <span class="field-val" id="posXVal">0%</span>
                   </div>
                   <input type="range" id="posXSlider" min="-100" max="100" value="0" class="slider" />
@@ -225,7 +217,7 @@ export class WallEditorUI {
 
           <!-- Panel 3: Sample Art Gallery -->
           <div class="panel-section" id="panelSamples" style="display: none;">
-            <p class="sample-intro">Click any graphic to load onto the active wall:</p>
+            <p class="sample-intro">Click any graphic to load onto the active room wall:</p>
             <div class="sample-art-grid">
               <button class="sample-card" data-sample="geometric">
                 <div class="sample-thumb geo-thumb"></div>
@@ -241,7 +233,7 @@ export class WallEditorUI {
               </button>
               <button class="sample-card" data-sample="minimal">
                 <div class="sample-thumb minimal-thumb"></div>
-                <span>Studio Exhibition</span>
+                <span>Exhibition Space</span>
               </button>
             </div>
           </div>

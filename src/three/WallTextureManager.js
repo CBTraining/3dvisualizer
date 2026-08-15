@@ -1,68 +1,66 @@
 import * as THREE from 'three';
 
 /**
- * Manages dynamic high-res canvas textures for clean architectural wall/panel surfaces.
- * Canvas resolution matches the exact physical aspect ratio of each wall section.
+ * Manages 2D high-resolution canvas textures for each architectural room section.
+ * Each room quadrant gets its own continuous corner wall surface (straight + curve + straight).
  */
 export class WallTextureSection {
-  constructor(id, name, widthFt = 19, heightFt = 9, options = {}) {
+  constructor(id, name, widthFt, heightFt, isCenterpiece = false) {
     this.id = id;
     this.name = name;
     this.widthFt = widthFt;
     this.heightFt = heightFt;
+    this.isCenterpiece = isCenterpiece;
 
-    // High resolution canvas with exact aspect ratio
+    // Physical texture aspect ratio
+    const aspect = this.widthFt / this.heightFt;
     this.canvasWidth = 2048;
-    this.canvasHeight = Math.max(512, Math.round((2048 * heightFt) / widthFt));
-    
-    // Main composite canvas
+    this.canvasHeight = Math.max(512, Math.round(2048 / aspect));
+
+    // Base color: Solid Black for centerpiece, Architectural Grey for interior room walls
+    this.baseColor = isCenterpiece ? '#18191d' : '#717882';
+
+    this.image = null;
+    this.imageDataUrl = null;
+    this.imageTransform = {
+      scale: 1.0,
+      offsetX: 0.0,
+      offsetY: 0.0,
+      rotation: 0,
+      opacity: 1.0,
+      fitMode: 'fill', // 'fit', 'fill', 'stretch', 'tile'
+      frameWidth: 0
+    };
+
+    this.drawingStrokes = [];
+    this.undoStack = [];
+
+    this.initCanvas();
+  }
+
+  initCanvas() {
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.canvasWidth;
     this.canvas.height = this.canvasHeight;
-    this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+    this.ctx = this.canvas.getContext('2d');
 
-    // Drawing layer canvas
-    this.drawingCanvas = document.createElement('canvas');
-    this.drawingCanvas.width = this.canvasWidth;
-    this.drawingCanvas.height = this.canvasHeight;
-    this.drawingCtx = this.drawingCanvas.getContext('2d', { willReadFrequently: true });
-
-    // Three.js Canvas Texture
     this.texture = new THREE.CanvasTexture(this.canvas);
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.texture.minFilter = THREE.LinearMipmapLinearFilter;
     this.texture.magFilter = THREE.LinearFilter;
     this.texture.generateMipmaps = true;
 
-    // State properties
-    this.baseColor = options.baseColor || '#717882';
-    this.image = null;
-    this.imageDataUrl = null;
-    this.imageTransform = {
-      fitMode: 'fit',
-      scale: 1.0,
-      offsetX: 0,
-      offsetY: 0,
-      rotation: 0,
-      opacity: 1.0,
-      frameColor: '#18191d',
-      frameWidth: 0
-    };
-
-    this.strokes = [];
-    this.redoStack = [];
-
     this.renderComposite();
   }
 
-  setBaseColor(color) {
-    this.baseColor = color;
+  setBaseColor(hexColor) {
+    this.baseColor = hexColor;
     this.renderComposite();
   }
 
-  setImage(imgElement, dataUrl = null) {
-    this.image = imgElement;
-    this.imageDataUrl = dataUrl;
+  setImage(img, dataUrl = null) {
+    this.image = img;
+    if (dataUrl) this.imageDataUrl = dataUrl;
     this.renderComposite();
   }
 
@@ -72,174 +70,141 @@ export class WallTextureSection {
     this.renderComposite();
   }
 
-  setImageTransform(options = {}) {
-    this.imageTransform = { ...this.imageTransform, ...options };
+  setImageTransform(newParams) {
+    Object.assign(this.imageTransform, newParams);
+    this.renderComposite();
+  }
+
+  addStroke(stroke) {
+    this.drawingStrokes.push(stroke);
+    this.undoStack = [];
+    this.renderComposite();
+  }
+
+  undo() {
+    if (this.drawingStrokes.length > 0) {
+      this.undoStack.push(this.drawingStrokes.pop());
+      this.renderComposite();
+    }
+  }
+
+  redo() {
+    if (this.undoStack.length > 0) {
+      this.drawingStrokes.push(this.undoStack.pop());
+      this.renderComposite();
+    }
+  }
+
+  clearDrawing() {
+    this.drawingStrokes = [];
+    this.undoStack = [];
     this.renderComposite();
   }
 
   renderComposite() {
-    const ctx = this.ctx;
-    const w = this.canvasWidth;
-    const h = this.canvasHeight;
+    const { ctx, canvasWidth: W, canvasHeight: H } = this;
+    ctx.clearRect(0, 0, W, H);
 
-    // 1. Clean Base Paint Color
+    // 1. Base Wall Color
     ctx.fillStyle = this.baseColor;
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillRect(0, 0, W, H);
 
-    // Subtle natural wall shading gradient
-    const grad = ctx.createLinearGradient(0, 0, 0, h);
-    grad.addColorStop(0, 'rgba(255, 255, 255, 0.05)');
-    grad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0.04)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
-
-    // 2. Custom Image Layer
-    if (this.image && (this.image.complete || this.image.width > 0)) {
+    // 2. Render Image Artwork Layer
+    if (this.image) {
       ctx.save();
       ctx.globalAlpha = this.imageTransform.opacity;
 
       const imgW = this.image.naturalWidth || this.image.width;
       const imgH = this.image.naturalHeight || this.image.height;
-      const mode = this.imageTransform.fitMode;
+      const fitMode = this.imageTransform.fitMode;
 
-      if (mode === 'tile') {
+      let drawW, drawH, drawX, drawY;
+
+      if (fitMode === 'stretch') {
+        drawW = W * this.imageTransform.scale;
+        drawH = H * this.imageTransform.scale;
+        drawX = (W - drawW) / 2 + this.imageTransform.offsetX * W;
+        drawY = (H - drawH) / 2 + this.imageTransform.offsetY * H;
+      } else if (fitMode === 'fill') {
+        const scaleFactor = Math.max(W / imgW, H / imgH) * this.imageTransform.scale;
+        drawW = imgW * scaleFactor;
+        drawH = imgH * scaleFactor;
+        drawX = (W - drawW) / 2 + this.imageTransform.offsetX * W;
+        drawY = (H - drawH) / 2 + this.imageTransform.offsetY * H;
+      } else if (fitMode === 'tile') {
+        const tileScale = this.imageTransform.scale * 0.4;
+        const tw = imgW * tileScale;
+        const th = imgH * tileScale;
         const pattern = ctx.createPattern(this.image, 'repeat');
-        if (pattern) {
-          ctx.fillStyle = pattern;
-          ctx.fillRect(0, 0, w, h);
-        }
+        ctx.fillStyle = pattern;
+        ctx.fillRect(0, 0, W, H);
       } else {
-        let drawW = w;
-        let drawH = h;
-        let posX = w / 2;
-        let posY = h / 2;
+        // 'fit' mode
+        const scaleFactor = Math.min(W / imgW, H / imgH) * this.imageTransform.scale;
+        drawW = imgW * scaleFactor;
+        drawH = imgH * scaleFactor;
+        drawX = (W - drawW) / 2 + this.imageTransform.offsetX * W;
+        drawY = (H - drawH) / 2 + this.imageTransform.offsetY * H;
+      }
 
-        if (mode === 'fit') {
-          const aspect = imgW / imgH;
-          const canvasAspect = w / h;
-          if (aspect > canvasAspect) {
-            drawW = w * 0.85 * this.imageTransform.scale;
-            drawH = (drawW / aspect);
-          } else {
-            drawH = h * 0.85 * this.imageTransform.scale;
-            drawW = (drawH * aspect);
-          }
-        } else if (mode === 'fill') {
-          const aspect = imgW / imgH;
-          const canvasAspect = w / h;
-          if (aspect > canvasAspect) {
-            drawH = h * this.imageTransform.scale;
-            drawW = drawH * aspect;
-          } else {
-            drawW = w * this.imageTransform.scale;
-            drawH = drawW / aspect;
-          }
-        } else if (mode === 'stretch') {
-          drawW = w * this.imageTransform.scale;
-          drawH = h * this.imageTransform.scale;
-        }
-
-        posX += this.imageTransform.offsetX * (w / 2);
-        posY += this.imageTransform.offsetY * (h / 2);
-
-        ctx.translate(posX, posY);
+      if (fitMode !== 'tile') {
+        ctx.translate(drawX + drawW / 2, drawY + drawH / 2);
         if (this.imageTransform.rotation !== 0) {
           ctx.rotate((this.imageTransform.rotation * Math.PI) / 180);
         }
 
+        // Frame Border
         if (this.imageTransform.frameWidth > 0) {
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-          ctx.shadowBlur = 20;
-          ctx.shadowOffsetX = 2;
-          ctx.shadowOffsetY = 8;
-          ctx.fillStyle = this.imageTransform.frameColor;
           const fw = this.imageTransform.frameWidth;
+          ctx.fillStyle = '#ffffff';
           ctx.fillRect(-drawW / 2 - fw, -drawH / 2 - fw, drawW + fw * 2, drawH + fw * 2);
-          ctx.shadowColor = 'transparent';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(-drawW / 2 - fw, -drawH / 2 - fw, drawW + fw * 2, drawH + fw * 2);
         }
 
         ctx.drawImage(this.image, -drawW / 2, -drawH / 2, drawW, drawH);
       }
+
       ctx.restore();
     }
 
-    // 3. Concept Drawing Layer
-    ctx.drawImage(this.drawingCanvas, 0, 0);
+    // 3. Render Direct 2D Concept Drawing Layer
+    if (this.drawingStrokes.length > 0) {
+      for (const stroke of this.drawingStrokes) {
+        this.drawSingleStroke(ctx, stroke);
+      }
+    }
 
     this.texture.needsUpdate = true;
   }
 
-  clearDrawing() {
-    this.drawingCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
-    this.strokes = [];
-    this.redoStack = [];
-    this.renderComposite();
-  }
-
-  addStroke(strokeData) {
-    this.strokes.push(strokeData);
-    this.redoStack = [];
-    this.redrawAllStrokes();
-  }
-
-  undo() {
-    if (this.strokes.length > 0) {
-      this.redoStack.push(this.strokes.pop());
-      this.redrawAllStrokes();
-    }
-  }
-
-  redo() {
-    if (this.redoStack.length > 0) {
-      this.strokes.push(this.redoStack.pop());
-      this.redrawAllStrokes();
-    }
-  }
-
-  redrawAllStrokes() {
-    this.drawingCtx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
-    for (const stroke of this.strokes) {
-      this.drawSingleStroke(this.drawingCtx, stroke);
-    }
-    this.renderComposite();
-  }
-
   drawSingleStroke(ctx, stroke) {
     ctx.save();
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    if (stroke.tool === 'eraser') {
+    if (stroke.tool === 'highlighter') {
+      ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.size * 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    } else if (stroke.tool === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out';
-      ctx.lineWidth = stroke.size || 20;
-      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(0,0,0,1)';
+      ctx.lineWidth = stroke.size * 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    } else {
+      ctx.globalAlpha = 1.0;
+      ctx.strokeStyle = stroke.color;
+      ctx.fillStyle = stroke.color;
+      ctx.lineWidth = stroke.size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+    }
+
+    if (stroke.tool === 'pen' || stroke.tool === 'highlighter' || stroke.tool === 'eraser') {
       if (stroke.points && stroke.points.length > 0) {
-        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (let i = 1; i < stroke.points.length; i++) {
-          ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-        }
-        ctx.stroke();
-      }
-    } else if (stroke.tool === 'highlighter') {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.4;
-      ctx.strokeStyle = stroke.color || '#ffeb3b';
-      ctx.lineWidth = stroke.size || 28;
-      ctx.beginPath();
-      if (stroke.points && stroke.points.length > 0) {
-        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (let i = 1; i < stroke.points.length; i++) {
-          ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
-        }
-        ctx.stroke();
-      }
-    } else if (stroke.tool === 'pen' || stroke.tool === 'brush') {
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = stroke.color || '#1e293b';
-      ctx.lineWidth = stroke.size || 6;
-      ctx.beginPath();
-      if (stroke.points && stroke.points.length > 0) {
+        ctx.beginPath();
         ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
         for (let i = 1; i < stroke.points.length; i++) {
           ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
@@ -247,74 +212,67 @@ export class WallTextureSection {
         ctx.stroke();
       }
     } else if (stroke.tool === 'line') {
-      ctx.strokeStyle = stroke.color || '#1e293b';
-      ctx.lineWidth = stroke.size || 6;
       ctx.beginPath();
       ctx.moveTo(stroke.start.x, stroke.start.y);
       ctx.lineTo(stroke.end.x, stroke.end.y);
       ctx.stroke();
     } else if (stroke.tool === 'rectangle') {
-      ctx.strokeStyle = stroke.color || '#1e293b';
-      ctx.lineWidth = stroke.size || 6;
-      const rx = Math.min(stroke.start.x, stroke.end.x);
-      const ry = Math.min(stroke.start.y, stroke.end.y);
-      const rw = Math.abs(stroke.end.x - stroke.start.x);
-      const rh = Math.abs(stroke.end.y - stroke.start.y);
-      ctx.strokeRect(rx, ry, rw, rh);
+      const x = Math.min(stroke.start.x, stroke.end.x);
+      const y = Math.min(stroke.start.y, stroke.end.y);
+      const w = Math.abs(stroke.end.x - stroke.start.x);
+      const h = Math.abs(stroke.end.y - stroke.start.y);
+      if (stroke.filled) {
+        ctx.fillRect(x, y, w, h);
+      } else {
+        ctx.strokeRect(x, y, w, h);
+      }
     } else if (stroke.tool === 'circle') {
-      ctx.strokeStyle = stroke.color || '#1e293b';
-      ctx.lineWidth = stroke.size || 6;
-      const rx = (stroke.start.x + stroke.end.x) / 2;
-      const ry = (stroke.start.y + stroke.end.y) / 2;
-      const radX = Math.abs(stroke.end.x - stroke.start.x) / 2;
-      const radY = Math.abs(stroke.end.y - stroke.start.y) / 2;
+      const rx = Math.abs(stroke.end.x - stroke.start.x) / 2;
+      const ry = Math.abs(stroke.end.y - stroke.start.y) / 2;
+      const cx = Math.min(stroke.start.x, stroke.end.x) + rx;
+      const cy = Math.min(stroke.start.y, stroke.end.y) + ry;
       ctx.beginPath();
-      ctx.ellipse(rx, ry, radX, radY, 0, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+      if (stroke.filled) {
+        ctx.fill();
+      } else {
+        ctx.stroke();
+      }
     } else if (stroke.tool === 'text') {
-      ctx.fillStyle = stroke.color || '#1e293b';
-      ctx.font = `bold ${stroke.fontSize || 36}px "Inter", sans-serif`;
+      ctx.font = `600 ${stroke.fontSize || 32}px "Inter", sans-serif`;
+      ctx.fillStyle = stroke.color;
       ctx.fillText(stroke.text, stroke.x, stroke.y);
     }
 
     ctx.restore();
   }
 
-  serialize() {
+  toJSON() {
     return {
       id: this.id,
       name: this.name,
-      widthFt: this.widthFt,
-      heightFt: this.heightFt,
       baseColor: this.baseColor,
       imageDataUrl: this.imageDataUrl,
-      imageTransform: { ...this.imageTransform },
-      strokes: this.strokes
+      imageTransform: this.imageTransform,
+      drawingStrokes: this.drawingStrokes
     };
   }
 
-  async deserialize(data) {
+  async fromJSON(data) {
     if (!data) return;
     this.baseColor = data.baseColor || this.baseColor;
-    if (data.imageTransform) {
-      this.imageTransform = { ...this.imageTransform, ...data.imageTransform };
-    }
-    this.strokes = data.strokes || [];
-    this.redoStack = [];
+    if (data.imageTransform) this.imageTransform = { ...this.imageTransform, ...data.imageTransform };
+    this.drawingStrokes = data.drawingStrokes || [];
 
     if (data.imageDataUrl) {
       this.imageDataUrl = data.imageDataUrl;
       const img = new Image();
-      img.crossOrigin = 'anonymous';
       await new Promise((resolve) => {
         img.onload = () => {
           this.image = img;
           resolve();
         };
-        img.onerror = () => {
-          this.image = null;
-          resolve();
-        };
+        img.onerror = resolve;
         img.src = data.imageDataUrl;
       });
     } else {
@@ -322,33 +280,37 @@ export class WallTextureSection {
       this.imageDataUrl = null;
     }
 
-    this.redrawAllStrokes();
+    this.renderComposite();
   }
 }
 
 /**
- * Manager handling all architectural wall sections with exact dimensions
+ * Manages all room quadrant wall sections & interior features
  */
 export class WallTextureManager {
-  constructor(onUpdateCallback) {
-    this.onUpdate = onUpdateCallback || (() => {});
-    
-    const GREY = '#717882';
-    const BLACK = '#18191d';
+  constructor(onTextureUpdate) {
+    this.onTextureUpdate = onTextureUpdate || (() => {});
 
-    // Exact wall physical dimensions for 1:1 aspect ratio mapping:
+    // 4 Main Quadrant Room Corner Wall Surfaces + Centerpiece & Fins:
+    // 1. NW Room Wall (24.25ft continuous straight+corner+straight)
+    // 2. NE Room Wall (14.20ft continuous straight+curve)
+    // 3. SW Room Wall (22.25ft continuous straight+corner+straight)
+    // 4. SE Room / East Wall (18.00ft continuous)
+    // 5. Centerpiece Island Column (18.00ft)
+    // 6. North Partition Fin (7.30ft)
+    // 7. West Partition Fin (7.30ft)
+    // 8. East Partition Fin (9.00ft)
+    // 9. South Entrance Vestibule (6.30ft)
     this.sections = {
-      1: new WallTextureSection(1, 'North Wall', 19.0, 9.0, { baseColor: GREY }),
-      2: new WallTextureSection(2, 'Upper West Wall', 9.5, 9.0, { baseColor: GREY }),
-      3: new WallTextureSection(3, 'Lower West Wall', 9.5, 9.0, { baseColor: GREY }),
-      4: new WallTextureSection(4, 'South Wall', 22.5, 9.0, { baseColor: GREY }),
-      5: new WallTextureSection(5, 'East Wall (Mid Section)', 6.0, 9.0, { baseColor: GREY }),
-      6: new WallTextureSection(6, 'East Wall (Lower / Booth)', 7.0, 9.0, { baseColor: GREY }),
-      7: new WallTextureSection(7, 'Centerpiece Island Column', 18.4, 9.0, { baseColor: BLACK }),
-      8: new WallTextureSection(8, 'North Partition Fin', 7.0, 9.0, { baseColor: GREY }),
-      9: new WallTextureSection(9, 'West Partition Fin', 7.0, 9.0, { baseColor: GREY }),
-      10: new WallTextureSection(10, 'East Partition Fin', 7.0, 9.0, { baseColor: GREY }),
-      11: new WallTextureSection(11, 'South Entrance Vestibule', 6.0, 9.0, { baseColor: GREY })
+      1: new WallTextureSection(1, 'North-West Room Wall (Corner 1)', 24.25, 9.0),
+      2: new WallTextureSection(2, 'North-East Room Wall (Corner 2)', 14.20, 9.0),
+      3: new WallTextureSection(3, 'South-West Room Wall (Corner 3)', 22.25, 9.0),
+      4: new WallTextureSection(4, 'South-East Room & Entry Wall', 18.00, 9.0),
+      5: new WallTextureSection(5, 'Centerpiece Island Column', 18.00, 9.0, true),
+      6: new WallTextureSection(6, 'North Partition Fin', 7.30, 9.0),
+      7: new WallTextureSection(7, 'West Partition Fin', 7.30, 9.0),
+      8: new WallTextureSection(8, 'East Partition Fin', 9.00, 9.0),
+      9: new WallTextureSection(9, 'South Entrance Vestibule', 6.30, 9.0)
     };
 
     this.activeSectionId = 1;
@@ -365,25 +327,25 @@ export class WallTextureManager {
   setActiveSection(id) {
     if (this.sections[id]) {
       this.activeSectionId = id;
-      this.onUpdate();
+      this.onTextureUpdate();
     }
   }
 
   serializeAll() {
     const result = {};
-    for (const [id, section] of Object.entries(this.sections)) {
-      result[id] = section.serialize();
+    for (const [id, sec] of Object.entries(this.sections)) {
+      result[id] = sec.toJSON();
     }
     return result;
   }
 
   async deserializeAll(data) {
     if (!data) return;
-    for (const [id, sectionData] of Object.entries(data)) {
+    for (const [id, secData] of Object.entries(data)) {
       if (this.sections[id]) {
-        await this.sections[id].deserialize(sectionData);
+        await this.sections[id].fromJSON(secData);
       }
     }
-    this.onUpdate();
+    this.onTextureUpdate();
   }
 }
