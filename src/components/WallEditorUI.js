@@ -37,7 +37,7 @@ export class WallEditorUI {
                 <span class="tab-num">SW</span>
                 <span class="tab-label">SW Room</span>
               </button>
-              <button class="wall-tab-btn" data-section="4" title="South-East Room & Entry Wall (18.0ft)">
+              <button class="wall-tab-btn" data-section="4" title="South-East Room Wall (28.2ft continuous sharp corner)">
                 <span class="tab-num">SE</span>
                 <span class="tab-label">SE Room</span>
               </button>
