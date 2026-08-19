@@ -2,11 +2,13 @@ import * as THREE from 'three';
 
 /**
  * Architectural Room Builder:
- * - Quadrants 1 (NW), 2 (NE), and 3 (SW) have continuous rounded corner walls.
- * - Quadrant 4 (SE) has a continuous SHARP 90-degree corner wall (no booth, empty room, connected watertight L-wall).
+ * - 100% Closed Outer Perimeter:
+ *   - NW, NE, and SW rooms have continuous rounded corner walls.
+ *   - SE room has a continuous SHARP 90-degree corner wall (closed East wall all the way to NE corner).
+ * - All 3 Partition Spokes (North, West, East) have matching outer fins, 4-foot passage walkway gaps, and center stub fins.
  * - Centerpiece column sides are textured.
  * - All interior faces facing the room are textured/grey (#717882).
- * - All exterior perimeter faces and top caps are solid black (#18191d).
+ * - All exterior perimeter faces and top caps are solid matte black (#18191d).
  */
 export class RoomBuilder {
   constructor(scene, wallTextureManager) {
@@ -142,9 +144,9 @@ export class RoomBuilder {
       const t = i / stepsLine;
       nePath.push(new THREE.Vector2(0 + t * L, -13.5));
     }
-    const stepsNeArc = 20;
+    const stepsNeArc = 24;
     for (let i = 1; i <= stepsNeArc; i++) {
-      const angle = Math.PI * 1.5 + (i / stepsNeArc) * (Math.PI * 0.38);
+      const angle = Math.PI * 1.5 + (i / stepsNeArc) * (Math.PI * 0.5);
       nePath.push(new THREE.Vector2(L + Math.cos(angle) * R, -L + Math.sin(angle) * R));
     }
     this.buildContinuousRibbonWall(nePath, 2, 'North-East Room Wall', H, T);
@@ -164,12 +166,13 @@ export class RoomBuilder {
     const stepsSouth = 10;
     for (let i = 1; i <= stepsSouth; i++) {
       const t = i / stepsSouth;
-      swPath.push(new THREE.Vector2(-L + t * (6.0), 13.5));
+      swPath.push(new THREE.Vector2(-L + t * 6.0, 13.5));
     }
     this.buildContinuousRibbonWall(swPath, 3, 'South-West Room Wall', H, T);
 
     // -------------------------------------------------------------
     // 5. QUADRANT 4: SOUTH-EAST ROOM SHARP 90° CORNER WALL (Section 4)
+    // Runs from South Vestibule (x = 1.8, z = 13.5) -> SE Corner (13.5, 13.5) -> East Wall (x = 13.5, z = -8.0)
     // -------------------------------------------------------------
     this.buildSouthEastWall(H, T);
 
@@ -179,7 +182,7 @@ export class RoomBuilder {
     this.buildCenterpiece(H);
 
     // -------------------------------------------------------------
-    // 7. INNER PARTITION FINS (Sections 6, 7, 8)
+    // 7. INNER PARTITION FINS WITH PASSAGE GAPS (Sections 6, 7, 8)
     // -------------------------------------------------------------
     this.buildPartitionFins(H, T);
 
@@ -392,8 +395,8 @@ export class RoomBuilder {
 
   /**
    * Quadrant 4: South-East Room Continuous Sharp 90° Corner Wall
-   * - Connects seamlessly from South Entrance Vestibule (x = 1.8) -> SE Sharp Corner (13.5, 13.5) -> East Wall (z = -3.5)
-   * - Completely open empty room with no rectangular prism booth!
+   * - Fully closes the East wall all the way to NE corner (z = -8.0)
+   * - Connects seamlessly from South Entrance Vestibule (x = 1.8) -> SE Sharp Corner (13.5, 13.5) -> East Wall (x = 13.5, z = -8.0)
    */
   buildSouthEastWall(H, T) {
     const seGroup = new THREE.Group();
@@ -410,33 +413,28 @@ export class RoomBuilder {
 
     const halfT = T / 2; // 0.25 ft
 
-    // Geometry parameters:
+    // Geometry:
     // South Wall starts at Vestibule (x = 1.8, z = 13.5)
     // SE Corner at (x = 13.5, z = 13.5)
-    // East Wall ends at (x = 13.5, z = -3.5)
+    // East Wall closes all the way to NE corner (x = 13.5, z = -8.0)
     
-    // Interior Corner: (13.5 - halfT, 13.5 - halfT) = (13.25, 13.25)
-    // Exterior Corner: (13.5 + halfT, 13.5 + halfT) = (13.75, 13.75)
+    // Interior: (1.8, 13.25) -> (13.25, 13.25) -> (13.25, -8.0)
+    // Exterior: (1.8, 13.75) -> (13.75, 13.75) -> (13.75, -8.0)
     
     const southLen = 13.25 - 1.8;   // 11.45 ft
-    const eastLen = 13.25 - (-3.5); // 16.75 ft
-    const totalLen = southLen + eastLen; // 28.2 ft
-    const uCorner = southLen / totalLen; // ~0.406
+    const eastLen = 13.25 - (-8.0); // 21.25 ft
+    const totalLen = southLen + eastLen; // 32.7 ft
+    const uCorner = southLen / totalLen; // ~0.35
 
-    // -------------------------------------------------------------
-    // 1. INTERIOR CONTINUOUS L-SURFACE (TEXTURED / GREY)
-    // -------------------------------------------------------------
+    // 1. Interior L-Surface (Textured / Grey)
     const innerGeo = new THREE.BufferGeometry();
     const innerVerts = [
-      // South start (x = 1.8, z = 13.25)
       1.8, 0, 13.25,      // 0: b0
       1.8, H, 13.25,      // 1: t0
-      // SE inner corner (x = 13.25, z = 13.25)
       13.25, 0, 13.25,    // 2: b1
       13.25, H, 13.25,    // 3: t1
-      // East end (x = 13.25, z = -3.5)
-      13.25, 0, -3.5,     // 4: b2
-      13.25, H, -3.5      // 5: t2
+      13.25, 0, -8.0,     // 4: b2
+      13.25, H, -8.0      // 5: t2
     ];
 
     const innerUvs = [
@@ -476,20 +474,15 @@ export class RoomBuilder {
     seGroup.add(innerMesh);
     this.wallMeshes[4] = innerMesh;
 
-    // -------------------------------------------------------------
-    // 2. EXTERIOR CONTINUOUS L-SURFACE (SOLID BLACK)
-    // -------------------------------------------------------------
+    // 2. Exterior L-Surface (Solid Black)
     const outerGeo = new THREE.BufferGeometry();
     const outerVerts = [
-      // South exterior start (x = 1.8, z = 13.75)
       1.8, 0, 13.75,      // 0: ob0
       1.8, H, 13.75,      // 1: ot0
-      // SE outer corner (x = 13.75, z = 13.75)
       13.75, 0, 13.75,    // 2: ob1
       13.75, H, 13.75,    // 3: ot1
-      // East exterior end (x = 13.75, z = -3.5)
-      13.75, 0, -3.5,     // 4: ob2
-      13.75, H, -3.5      // 5: ot2
+      13.75, 0, -8.0,     // 4: ob2
+      13.75, H, -8.0      // 5: ot2
     ];
 
     const outerNorms = [
@@ -526,17 +519,15 @@ export class RoomBuilder {
     outerMesh.castShadow = true;
     seGroup.add(outerMesh);
 
-    // -------------------------------------------------------------
-    // 3. TOP CAP (SOLID BLACK)
-    // -------------------------------------------------------------
+    // 3. Top Cap (Solid Black)
     const topGeo = new THREE.BufferGeometry();
     const topVerts = [
       1.8, H, 13.75,    // 0: out0
       1.8, H, 13.25,    // 1: in0
       13.75, H, 13.75,  // 2: out1
       13.25, H, 13.25,  // 3: in1
-      13.75, H, -3.5,   // 4: out2
-      13.25, H, -3.5    // 5: in2
+      13.75, H, -8.0,   // 4: out2
+      13.25, H, -8.0    // 5: in2
     ];
 
     const topIndices = [
@@ -553,10 +544,7 @@ export class RoomBuilder {
     const topMesh = new THREE.Mesh(topGeo, this.doubleBlackMaterial);
     seGroup.add(topMesh);
 
-    // -------------------------------------------------------------
-    // 4. START & END JAMBS (SOLID BLACK)
-    // -------------------------------------------------------------
-    // South start jamb at x = 1.8
+    // 4. Start & End Jambs (Solid Black)
     const startJambGeo = new THREE.BufferGeometry();
     startJambGeo.setAttribute('position', new THREE.Float32BufferAttribute([
       1.8, 0, 13.75,
@@ -568,13 +556,12 @@ export class RoomBuilder {
     startJambGeo.computeVertexNormals();
     seGroup.add(new THREE.Mesh(startJambGeo, this.doubleBlackMaterial));
 
-    // East end jamb at z = -3.5
     const endJambGeo = new THREE.BufferGeometry();
     endJambGeo.setAttribute('position', new THREE.Float32BufferAttribute([
-      13.75, 0, -3.5,
-      13.25, 0, -3.5,
-      13.25, H, -3.5,
-      13.75, H, -3.5
+      13.75, 0, -8.0,
+      13.25, 0, -8.0,
+      13.25, H, -8.0,
+      13.75, H, -8.0
     ], 3));
     endJambGeo.setIndex([0, 2, 1, 0, 3, 2]);
     endJambGeo.computeVertexNormals();
@@ -681,12 +668,15 @@ export class RoomBuilder {
     this.roomGroup.add(islandGroup);
   }
 
+  /**
+   * Partition Spokes: North, West, East fins radiating from Centerpiece with Walkway Gaps
+   */
   buildPartitionFins(H, T) {
     const finsGroup = new THREE.Group();
     finsGroup.name = 'PartitionFins';
 
     // -------------------------------------------------------------
-    // NORTH FIN (Section 6)
+    // NORTH FIN (Section 6) at x = 0
     // -------------------------------------------------------------
     const northFinMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(6).texture,
@@ -715,7 +705,7 @@ export class RoomBuilder {
     finsGroup.add(northCenterFin);
 
     // -------------------------------------------------------------
-    // WEST FIN (Section 7)
+    // WEST FIN (Section 7) at z = 0
     // -------------------------------------------------------------
     const westFinMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(7).texture,
@@ -744,7 +734,7 @@ export class RoomBuilder {
     finsGroup.add(westCenterFin);
 
     // -------------------------------------------------------------
-    // EAST FIN (Section 8)
+    // EAST FIN (Section 8) at z = 0 (Divides NE and SE rooms)
     // -------------------------------------------------------------
     const eastFinMat = new THREE.MeshStandardMaterial({
       map: this.textureManager.getSection(8).texture,
@@ -755,14 +745,24 @@ export class RoomBuilder {
     });
     this.interiorMaterials.push(eastFinMat);
 
-    const eastFinGeo = new THREE.BoxGeometry(9.0, H, T);
-    const eastFin = new THREE.Mesh(eastFinGeo, eastFinMat);
-    eastFin.position.set(9.0, H / 2, -0.5);
-    eastFin.castShadow = true;
-    eastFin.receiveShadow = true;
-    eastFin.userData = { sectionId: 8, name: 'East Partition Fin' };
-    finsGroup.add(eastFin);
-    this.wallMeshes[8] = eastFin;
+    // Outer East Fin (attaches to East wall at x = 13.5)
+    const eastOuterGeo = new THREE.BoxGeometry(4.5, H, T);
+    const eastOuterFin = new THREE.Mesh(eastOuterGeo, eastFinMat);
+    eastOuterFin.position.set(11.25, H / 2, 0);
+    eastOuterFin.castShadow = true;
+    eastOuterFin.receiveShadow = true;
+    eastOuterFin.userData = { sectionId: 8, name: 'East Partition Fin' };
+    finsGroup.add(eastOuterFin);
+    this.wallMeshes[8] = eastOuterFin;
+
+    // Center East Stub Fin (attaches to centerpiece at x = 2.4 to 5.0)
+    const eastCenterGeo = new THREE.BoxGeometry(2.6, H, T);
+    const eastCenterFin = new THREE.Mesh(eastCenterGeo, eastFinMat);
+    eastCenterFin.position.set(3.7, H / 2, 0);
+    eastCenterFin.castShadow = true;
+    eastCenterFin.receiveShadow = true;
+    eastCenterFin.userData = { sectionId: 8, name: 'East Partition Fin' };
+    finsGroup.add(eastCenterFin);
 
     this.roomGroup.add(finsGroup);
   }

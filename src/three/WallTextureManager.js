@@ -298,7 +298,7 @@ export class WallTextureManager {
       1: new WallTextureSection(1, 'North-West Room Wall (Corner 1)', 24.25, 9.0),
       2: new WallTextureSection(2, 'North-East Room Wall (Corner 2)', 14.20, 9.0),
       3: new WallTextureSection(3, 'South-West Room Wall (Corner 3)', 22.25, 9.0),
-      4: new WallTextureSection(4, 'South-East Room Wall (Sharp Corner 4)', 28.20, 9.0),
+      4: new WallTextureSection(4, 'South-East Room Wall (Sharp Corner 4)', 32.70, 9.0),
       5: new WallTextureSection(5, 'Centerpiece Island Column', 18.00, 9.0, true),
       6: new WallTextureSection(6, 'North Partition Fin', 7.30, 9.0),
       7: new WallTextureSection(7, 'West Partition Fin', 7.30, 9.0),
